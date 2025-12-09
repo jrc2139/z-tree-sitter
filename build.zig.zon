@@ -1,12 +1,14 @@
 .{
-    .name = "zts",
-
-    .version = "0.1.0",
+    .name = .zts,
+    .fingerprint = 0x2478a8e0ed075681,
+    .version = "0.2.0",
+    .minimum_zig_version = "0.15.0",
 
     .dependencies = .{
+        // tree-sitter 0.26 with Zig 0.15 compatible build
         .tree_sitter_api = .{
-            .url = "https://github.com/tree-sitter/tree-sitter/archive/refs/tags/v0.23.0.tar.gz",
-            .hash = "1220620866228f8733b24a0ca506964b6958d90f3ab93d70ad6118f9fa27334a52c4",
+            .url = "git+https://github.com/tree-sitter/tree-sitter#0ca8fe8c12dde40008305e7925cac410952f0752",
+            .hash = "tree_sitter-0.26.0-Tw2sR-OmCwCrOs5XQk7tIRnndsDDQ3RyqGWYwip1jt8Z",
         },
 
         .bash = .{
