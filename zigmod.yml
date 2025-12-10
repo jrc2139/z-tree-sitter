@@ -1,0 +1,6 @@
+id: klfhqn6ki0y41hckd1uz021jqg9tawv1gl5ewls9rhgjiktp
+name: z-tree-sitter
+main: src/treesitter.zig
+license: MIT
+description: treesitter for zig
+dependencies:

@@ -1,3 +1,7 @@
 .zig-cache/
 zig-out/
 .DS_Store
+.zigmod
+deps.zig
+files.zig
+zigmod.lock
