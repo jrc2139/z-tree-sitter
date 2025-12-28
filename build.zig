@@ -12,6 +12,8 @@ const Grammar = struct {
     name: []const u8,
     root: []const u8 = "src",
     scanner: bool = true,
+    /// If true, run `tree-sitter generate` before compiling (requires tree-sitter-cli)
+    generate: bool = false,
 };
 
 pub fn build(b: *Build) !void {
@@ -89,6 +91,18 @@ fn buildLanguageGrammar(
             .optimize = optimize,
         }),
     });
+
+    // For grammars that need generation, run tree-sitter generate first
+    if (g.generate) {
+        const cli_path = getTreeSitterCli(b) catch {
+            std.log.err("Failed to get tree-sitter CLI for grammar generation. Install tree-sitter-cli or ensure the binary is available.", .{});
+            return error.TreeSitterCliNotFound;
+        };
+        const gen_step = b.addSystemCommand(&.{cli_path});
+        gen_step.addArg("generate");
+        gen_step.setCwd(dep.path(""));
+        lib.step.dependOn(&gen_step.step);
+    }
 
     const default_files = &.{ "parser.c", "scanner.c" };
     lib.addCSourceFiles(.{
@@ -177,34 +191,65 @@ fn isSupportedGrammar(name: []const u8) bool {
     return false;
 }
 
+/// Get path to tree-sitter CLI binary
+/// First tries system PATH, then falls back to bundled dependency
+fn getTreeSitterCli(b: *Build) ![]const u8 {
+    _ = b;
+    // Try to find tree-sitter in PATH first
+    const result = std.process.Child.run(.{
+        .allocator = allocator,
+        .argv = &.{ "which", "tree-sitter" },
+    }) catch {
+        return error.TreeSitterNotFound;
+    };
+
+    if (result.term.Exited == 0 and result.stdout.len > 0) {
+        // Remove trailing newline
+        const path = std.mem.trimRight(u8, result.stdout, "\n\r");
+        if (path.len > 0) {
+            return path;
+        }
+    }
+
+    return error.TreeSitterNotFound;
+}
+
 const grammars = [_]Grammar{
     .{ .name = "bash" },
     .{ .name = "c", .scanner = false },
     .{ .name = "css" },
     .{ .name = "cpp" },
     .{ .name = "c_sharp" },
+    .{ .name = "dart" },
+    .{ .name = "dockerfile", .scanner = false },
     .{ .name = "elixir" },
     .{ .name = "elm" },
     .{ .name = "erlang", .scanner = false },
     .{ .name = "fsharp", .root = "fsharp/src" },
     .{ .name = "go", .scanner = false },
     .{ .name = "haskell" },
+    .{ .name = "html" },
     .{ .name = "java", .scanner = false },
     .{ .name = "javascript" },
     .{ .name = "json", .scanner = false },
     .{ .name = "julia" },
     .{ .name = "kotlin" },
     .{ .name = "lua" },
+    .{ .name = "make", .scanner = false },
     .{ .name = "markdown", .root = "tree-sitter-markdown/src" },
     .{ .name = "nim" },
     .{ .name = "ocaml", .root = "grammars/ocaml/src" },
     .{ .name = "perl" },
     .{ .name = "php", .root = "php/src" },
     .{ .name = "python" },
+    .{ .name = "r" },
     .{ .name = "ruby" },
     .{ .name = "rust" },
     .{ .name = "scala" },
+    .{ .name = "sql" },
+    .{ .name = "swift", .generate = true },
     .{ .name = "toml" },
     .{ .name = "typescript", .root = "typescript/src" },
+    .{ .name = "yaml" },
     .{ .name = "zig", .scanner = false },
 };

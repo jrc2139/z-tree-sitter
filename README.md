@@ -1,6 +1,6 @@
 # z-tree-sitter 🌳
 
-A Zig package that provides a complete wrapper around [tree-sitter API](https://tree-sitter.github.io/tree-sitter/), along with built-in support for well-known languages grammar (see [supported languages grammar](#supported-languages-grammar)). The current version of z-tree-sitter supports tree-sitter 0.23.0.
+A Zig package that provides a complete wrapper around [tree-sitter API](https://tree-sitter.github.io/tree-sitter/), along with built-in support for well-known languages grammar (see [supported languages grammar](#supported-languages-grammar)). The current version of z-tree-sitter supports tree-sitter 0.26.3.
 
 ## Documentation
 You can find documentation directly from the [tree-sitter API header](https://github.com/tree-sitter/tree-sitter/blob/master/lib/include/tree_sitter/api.h) or on the [tree-sitter website](https://tree-sitter.github.io/tree-sitter/).
@@ -57,34 +57,44 @@ const zts = b.dependency("zts", .{
 You can then load and use the imported grammar languages by calling `zts.loadLanguage()`, see this [example](https://github.com/lfcm64/z-tree-sitter/blob/main/examples/parse-input.zig) for more details.
 
 ### Supported languages Grammar
-Here is a list of all available languages grammar:
+Here is a list of all 37 available languages grammars:
+
+> **Note:** Swift requires [tree-sitter-cli](https://github.com/tree-sitter/tree-sitter/releases) to be installed for build-time parser generation.
 
 - [x] [bash](https://github.com/tree-sitter/tree-sitter-bash)
 - [x] [c](https://github.com/tree-sitter/tree-sitter-c)
-- [x] [css](https://github.com/tree-sitter/tree-sitter-css)
 - [x] [cpp](https://github.com/tree-sitter/tree-sitter-cpp)
 - [x] [c-sharp](https://github.com/tree-sitter/tree-sitter-c-sharp)
+- [x] [css](https://github.com/tree-sitter/tree-sitter-css)
+- [x] [dart](https://github.com/UserNobody14/tree-sitter-dart)
+- [x] [dockerfile](https://github.com/camdencheek/tree-sitter-dockerfile)
 - [x] [elixir](https://github.com/elixir-lang/tree-sitter-elixir)
 - [x] [elm](https://github.com/elm-tooling/tree-sitter-elm)
 - [x] [erlang](https://github.com/WhatsApp/tree-sitter-erlang)
 - [x] [fsharp](https://github.com/ionide/tree-sitter-fsharp)
 - [x] [go](https://github.com/tree-sitter/tree-sitter-go)
 - [x] [haskell](https://github.com/tree-sitter/tree-sitter-haskell)
+- [x] [html](https://github.com/tree-sitter/tree-sitter-html)
 - [x] [java](https://github.com/tree-sitter/tree-sitter-java)
 - [x] [javascript](https://github.com/tree-sitter/tree-sitter-javascript)
 - [x] [json](https://github.com/tree-sitter/tree-sitter-json)
 - [x] [julia](https://github.com/tree-sitter/tree-sitter-julia)
 - [x] [kotlin](https://github.com/fwcd/tree-sitter-kotlin)
 - [x] [lua](https://github.com/tree-sitter-grammars/tree-sitter-lua)
+- [x] [make](https://github.com/tree-sitter-grammars/tree-sitter-make)
 - [x] [markdown](https://github.com/tree-sitter-grammars/tree-sitter-markdown)
 - [x] [nim](https://github.com/alaviss/tree-sitter-nim)
 - [x] [ocaml](https://github.com/tree-sitter/tree-sitter-ocaml)
 - [x] [perl](https://github.com/ganezdragon/tree-sitter-perl)
 - [x] [php](https://github.com/tree-sitter/tree-sitter-php)
 - [x] [python](https://github.com/tree-sitter/tree-sitter-python)
+- [x] [r](https://github.com/r-lib/tree-sitter-r)
 - [x] [ruby](https://github.com/tree-sitter/tree-sitter-ruby)
 - [x] [rust](https://github.com/tree-sitter/tree-sitter-rust)
 - [x] [scala](https://github.com/tree-sitter/tree-sitter-scala)
+- [x] [sql](https://github.com/DerekStride/tree-sitter-sql)
+- [x] [swift](https://github.com/alex-pinkus/tree-sitter-swift) *
 - [x] [toml](https://github.com/tree-sitter-grammars/tree-sitter-toml)
 - [x] [typescript](https://github.com/tree-sitter/tree-sitter-typescript)
+- [x] [yaml](https://github.com/tree-sitter-grammars/tree-sitter-yaml)
 - [x] [zig](https://github.com/tree-sitter-grammars/tree-sitter-zig)

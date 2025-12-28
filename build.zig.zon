@@ -5,10 +5,10 @@
     .minimum_zig_version = "0.15.0",
 
     .dependencies = .{
-        // tree-sitter 0.26 with Zig 0.15 compatible build
+        // tree-sitter 0.26.3 with Zig 0.15 compatible build
         .tree_sitter_api = .{
-            .url = "git+https://github.com/tree-sitter/tree-sitter#0ca8fe8c12dde40008305e7925cac410952f0752",
-            .hash = "tree_sitter-0.26.0-Tw2sR-OmCwCrOs5XQk7tIRnndsDDQ3RyqGWYwip1jt8Z",
+            .url = "git+https://github.com/tree-sitter/tree-sitter#cd4b6e2ef996d4baca12caadb78dffc8b55bc869",
+            .hash = "tree_sitter-0.26.3-Tw2sRwKWCwB6DronNIXBd7Aq5TY4WlnmS4d8PB_M7TIU",
         },
 
         .bash = .{
@@ -154,6 +154,47 @@
         .zig = .{
             .url = "https://github.com/tree-sitter-grammars/tree-sitter-zig/archive/refs/tags/v1.0.0.tar.gz",
             .hash = "12207b5ffde42bed86a64cb65f986cb89a7d841d841490a1de730fca71f5a4c2885d",
+        },
+
+        // New languages
+        .dart = .{
+            .url = "git+https://github.com/UserNobody14/tree-sitter-dart#d4d8f3e337d8be23be27ffc35a0aef972343cd54",
+            .hash = "1220ff91ca73ef510e49c8ede7fa0df4239f987444f4edbadde8cd29e71c993a92c5",
+        },
+
+        .dockerfile = .{
+            .url = "https://github.com/camdencheek/tree-sitter-dockerfile/archive/refs/tags/v0.2.0.tar.gz",
+            .hash = "12205ffcf00c9110d18dfd37283140efebb9e966f62697ff4e240354e177b42f4ff9",
+        },
+
+        .html = .{
+            .url = "https://github.com/tree-sitter/tree-sitter-html/archive/refs/tags/v0.23.2.tar.gz",
+            .hash = "122051ccc3412c63010f4c88d8dda83dfde374c62ab7db0c6140a23083678584faad",
+        },
+
+        .make = .{
+            .url = "https://github.com/tree-sitter-grammars/tree-sitter-make/archive/refs/tags/v1.1.1.tar.gz",
+            .hash = "12203d87078f61c9fc15d0c0244798a8204195823639ecba3b9836e0123f886c0d31",
+        },
+
+        .r = .{
+            .url = "https://github.com/r-lib/tree-sitter-r/archive/refs/tags/v1.2.0.tar.gz",
+            .hash = "12203414d034141c24d7f9897a64be5ffdec8af6645ff922414f432f32fb90880f6a",
+        },
+
+        .sql = .{
+            .url = "git+https://github.com/DerekStride/tree-sitter-sql#gh-pages",
+            .hash = "N-V-__8AAIGYYQIeFtnHOQVvuwer0qnCaQz3mPHNTYOWnRKU",
+        },
+
+        .swift = .{
+            .url = "https://github.com/alex-pinkus/tree-sitter-swift/archive/refs/tags/0.7.1.tar.gz",
+            .hash = "N-V-__8AAANXFQDOdj-JLpPWNB36JD1O1JVB2BQrNkbI-uax",
+        },
+
+        .yaml = .{
+            .url = "https://github.com/tree-sitter-grammars/tree-sitter-yaml/archive/refs/tags/v0.7.2.tar.gz",
+            .hash = "122033248d153e9548aff821ae82952e072ea35f6f153e5d5ecdc7db3a8e46df83d6",
         },
     },
 
