@@ -121,7 +121,8 @@ fn buildLanguageGrammar(
 
 fn generateHeaderFile(b: *Build, g: Grammar, dep: *std.Build.Dependency) ![]const u8 {
     const path = dep.path("").getPath(b);
-    const dir = try std.fs.openDirAbsolute(path, .{});
+    // Use cwd-relative open since getPath may return a relative path
+    const dir = try std.fs.cwd().openDir(path, .{});
 
     const file_name = try std.fmt.allocPrint(allocator, "{s}.h", .{g.name});
 
