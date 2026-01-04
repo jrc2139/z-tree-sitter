@@ -1,7 +1,7 @@
 .{
     .name = .zts,
     .fingerprint = 0x2478a8e0ed075681,
-    .version = "0.2.0",
+    .version = "0.2.1",
     .minimum_zig_version = "0.15.0",
 
     .dependencies = .{
@@ -183,8 +183,8 @@
         },
 
         .sql = .{
-            .url = "git+https://github.com/DerekStride/tree-sitter-sql#gh-pages",
-            .hash = "N-V-__8AAIGYYQIeFtnHOQVvuwer0qnCaQz3mPHNTYOWnRKU",
+            .url = "git+https://github.com/DerekStride/tree-sitter-sql#48a3e1de8f19025bd7526a1eacc6e65ce372b470",
+            .hash = "N-V-__8AABf8YwK0rVcRFyRhs8Z9XF7dSIsJDz7hHGaCjd5D",
         },
 
         .swift = .{
