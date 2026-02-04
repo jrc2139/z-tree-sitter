@@ -1,7 +1,7 @@
 .{
     .name = .zts,
     .fingerprint = 0x2478a8e0ed075681,
-    .version = "0.2.1",
+    .version = "0.2.2",
     .minimum_zig_version = "0.15.0",
 
     .dependencies = .{
