@@ -78,10 +78,17 @@ fn buildLanguageGrammar(
     optimize: std.builtin.OptimizeMode,
     g: Grammar,
 ) !*Step.Compile {
-    const dep = b.dependency(g.name, .{
-        .target = target,
-        .optimize = optimize,
-    });
+    // Use vendored sources if present, otherwise fall back to URL dependency
+    const source_root: std.Build.LazyPath = blk: {
+        var probe_buf: [256]u8 = undefined;
+        const probe_path = std.fmt.bufPrint(&probe_buf, "grammars/{s}/{s}/parser.c", .{ g.name, g.root }) catch unreachable;
+        if (b.build_root.handle.openFile(probe_path, .{})) |f| {
+            f.close();
+            break :blk b.path(b.fmt("grammars/{s}", .{g.name}));
+        } else |_| {
+            break :blk b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
+        }
+    };
 
     const lib = b.addLibrary(.{
         .name = g.name,
@@ -100,27 +107,27 @@ fn buildLanguageGrammar(
         };
         const gen_step = b.addSystemCommand(&.{cli_path});
         gen_step.addArg("generate");
-        gen_step.setCwd(dep.path(""));
+        gen_step.setCwd(source_root);
         lib.step.dependOn(&gen_step.step);
     }
 
     const default_files = &.{ "parser.c", "scanner.c" };
     lib.addCSourceFiles(.{
-        .root = dep.path(g.root),
+        .root = source_root.path(b, g.root),
         .files = if (g.scanner) default_files else &.{"parser.c"},
         .flags = &.{"-std=c11"},
     });
-    lib.addIncludePath(dep.path(g.root));
+    lib.addIncludePath(source_root.path(b, g.root));
     lib.linkLibC();
 
-    const path = try generateHeaderFile(b, g, dep);
-    lib.installHeader(dep.path(path), path);
+    const header_path = try generateHeaderFile(b, g, source_root);
+    lib.installHeader(source_root.path(b, header_path), header_path);
 
     return lib;
 }
 
-fn generateHeaderFile(b: *Build, g: Grammar, dep: *std.Build.Dependency) ![]const u8 {
-    const path = dep.path("").getPath(b);
+fn generateHeaderFile(b: *Build, g: Grammar, source_root: std.Build.LazyPath) ![]const u8 {
+    const path = source_root.getPath(b);
     // Use cwd-relative open since getPath may return a relative path
     const dir = try std.fs.cwd().openDir(path, .{});
 
