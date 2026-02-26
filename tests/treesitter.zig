@@ -31,24 +31,15 @@ test "parser" {
 
     const text = "const Foo = 0;";
 
-    //const input: zts.Input = undefined;
-    //_ = try p.parse(null, input);
     _ = try p.parseString(null, text);
-    _ = try p.parseStringEncoding(null, text, .utf16);
+    _ = try p.parseStringEncoding(null, text, .utf16_le);
 
     p.reset();
-
-    p.setTimeoutMicros(0);
-    _ = p.getTimeoutMicros();
-
-    var flag: u64 = 0;
-    p.setCancellationFlag(&flag);
-    _ = p.getCancellationFlag();
 
     p.setLogger(undefined);
     _ = p.getLogger();
 
-    p.printDotGraphs(0);
+    p.printDotGraphs(-1);
 }
 
 test "tree" {
@@ -80,8 +71,6 @@ test "tree" {
     tree.edit(&ie);
 
     _ = tree.getChangedRanges(tree_copy, &length);
-
-    //tree.printDotGraph(0);
 }
 
 test "language" {
@@ -98,8 +87,13 @@ test "language" {
     _ = lang.getFieldNameForId(1);
     _ = lang.getFieldIdForName("if", 2);
     _ = lang.getSymbolType(1);
-    _ = lang.getVersion();
+    _ = lang.getAbiVersion();
     _ = lang.getNextState(1, 1);
+    _ = lang.getName();
+    _ = lang.getMetadata();
+
+    var supertype_len: u32 = 0;
+    _ = lang.getSupertypes(&supertype_len);
 }
 
 test "node" {
@@ -124,7 +118,11 @@ test "node" {
     _ = node.getStartPoint();
     _ = node.getEndByte();
     _ = node.getEndPoint();
-    _ = node.toString();
+
+    const node_str = node.toString();
+    defer node_str.deinit();
+    try std.testing.expect(node_str.slice().len > 0);
+
     _ = node.isNull();
     _ = node.isNamed();
     _ = node.isMissing();
@@ -137,10 +135,11 @@ test "node" {
     _ = node.getParent();
 
     if (node.getChild(0)) |child| {
-        _ = node.childContainingDescendant(child);
+        _ = node.childWithDescendant(child);
     }
 
     _ = node.getFieldNameForChild(0);
+    _ = node.getFieldNameForNamedChild(0);
     _ = node.getChildCount();
     _ = node.getNamedChild(0);
     _ = node.getNamedChildCount();
@@ -245,8 +244,10 @@ test "query and query cursor" {
     _ = cursor.didExceedMatchLimit();
     _ = cursor.matchLimit();
     cursor.setMatchLimit(1000);
-    cursor.setByteRange(0, text.len);
-    cursor.setPointRange(Point{ .row = 0, .column = 0 }, Point{ .row = 1, .column = 0 });
+    _ = cursor.setByteRange(0, text.len);
+    _ = cursor.setPointRange(Point{ .row = 0, .column = 0 }, Point{ .row = 1, .column = 0 });
+    _ = cursor.setContainingByteRange(0, text.len);
+    _ = cursor.setContainingPointRange(Point{ .row = 0, .column = 0 }, Point{ .row = 1, .column = 0 });
 
     var match: zts.QueryMatch = undefined;
     _ = cursor.nextMatch(&match);
@@ -272,4 +273,33 @@ test "lookahead iterator" {
     _ = iterator.next();
     _ = iterator.currentSymbol();
     _ = iterator.currentSymbolName();
+}
+
+test "parse options" {
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    try p.setLanguage(zig);
+
+    const options = zts.ParseOptions{};
+    _ = options;
+}
+
+test "node string memory management" {
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    try p.setLanguage(zig);
+
+    const tree = try p.parseString(null, "const x = 1;");
+    defer tree.deinit();
+
+    const root = tree.rootNode();
+    const s = root.toString();
+    defer s.deinit();
+
+    try std.testing.expect(s.slice().len > 0);
+    try std.testing.expect(std.mem.startsWith(u8, s.slice(), "(source_file"));
 }

@@ -1,7 +1,7 @@
 const std = @import("std");
 const tree_sitter = @import("c.zig").tree_sitter;
 
-pub const TREE_SITTER_LANGUAGE_VERSION: u32 = 14;
+pub const TREE_SITTER_LANGUAGE_VERSION: u32 = 15;
 
 pub const TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION: u32 = 13;
 
@@ -54,8 +54,26 @@ pub const Language = opaque {
         return @enumFromInt(tree_sitter.ts_language_symbol_type(@ptrCast(language), symbol));
     }
 
-    pub fn getVersion(language: *const Self) u32 {
-        return tree_sitter.ts_language_version(@ptrCast(language));
+    pub fn getAbiVersion(language: *const Self) u32 {
+        return tree_sitter.ts_language_abi_version(@ptrCast(language));
+    }
+
+    pub fn getName(language: *const Self) ?[]const u8 {
+        if (tree_sitter.ts_language_name(@ptrCast(language))) |name| {
+            return std.mem.span(name);
+        } else return null;
+    }
+
+    pub fn getMetadata(language: *const Self) ?*const LanguageMetadata {
+        return @ptrCast(tree_sitter.ts_language_metadata(@ptrCast(language)));
+    }
+
+    pub fn getSupertypes(language: *const Self, length: *u32) ?[*]const Symbol {
+        return @ptrCast(tree_sitter.ts_language_supertypes(@ptrCast(language), length));
+    }
+
+    pub fn getSubtypes(language: *const Self, supertype: Symbol, length: *u32) ?[*]const Symbol {
+        return @ptrCast(tree_sitter.ts_language_subtypes(@ptrCast(language), supertype, length));
     }
 
     pub fn getNextState(language: *const Self, state: StateId, symbol: Symbol) StateId {
@@ -127,24 +145,14 @@ pub const Parser = opaque {
         } else return error.EncodingParseFail;
     }
 
+    pub fn parseWithOptions(self: *Self, old_tree: ?*const Tree, input: Input, options: ParseOptions) !*Tree {
+        if (tree_sitter.ts_parser_parse_with_options(@ptrCast(self), @ptrCast(old_tree), @bitCast(input), @bitCast(options))) |tree| {
+            return @ptrCast(tree);
+        } else return error.ParseFail;
+    }
+
     pub fn reset(self: *Self) void {
         tree_sitter.ts_parser_reset(@ptrCast(self));
-    }
-
-    pub fn setTimeoutMicros(self: *Self, timeout_micros: u64) void {
-        tree_sitter.ts_parser_set_timeout_micros(@ptrCast(self), timeout_micros);
-    }
-
-    pub fn getTimeoutMicros(self: *Self) u64 {
-        return tree_sitter.ts_parser_timeout_micros(@ptrCast(self));
-    }
-
-    pub fn setCancellationFlag(self: *Self, flag: *u64) void {
-        tree_sitter.ts_parser_set_cancellation_flag(@ptrCast(self), @ptrCast(flag));
-    }
-
-    pub fn getCancellationFlag(self: *const Self) *u64 {
-        return @constCast(tree_sitter.ts_parser_cancellation_flag(@ptrCast(self)));
     }
 
     pub fn setLogger(self: *Self, logger: Logger) void {
@@ -155,8 +163,8 @@ pub const Parser = opaque {
         return @bitCast(tree_sitter.ts_parser_logger(@ptrCast(self)));
     }
 
-    pub fn printDotGraphs(self: *Self, fd: u32) void {
-        tree_sitter.ts_parser_print_dot_graphs(@ptrCast(self), @intCast(fd));
+    pub fn printDotGraphs(self: *Self, fd: i32) void {
+        tree_sitter.ts_parser_print_dot_graphs(@ptrCast(self), fd);
     }
 };
 
@@ -199,8 +207,8 @@ pub const Tree = opaque {
         return @ptrCast(tree_sitter.ts_tree_get_changed_ranges(@ptrCast(old_tree), @ptrCast(new_tree), length));
     }
 
-    pub fn printDotGraph(tree: *Self, fd: u32) void {
-        tree_sitter.ts_tree_print_dot_graph(@ptrCast(tree), @intCast(fd));
+    pub fn printDotGraph(tree: *Self, fd: i32) void {
+        tree_sitter.ts_tree_print_dot_graph(@ptrCast(tree), fd);
     }
 };
 
@@ -309,6 +317,10 @@ pub const QueryCursor = opaque {
         tree_sitter.ts_query_cursor_exec(@ptrCast(self), @ptrCast(query), @bitCast(node));
     }
 
+    pub fn execWithOptions(self: *Self, query: *const Query, node: Node, options: *const QueryCursorOptions) void {
+        tree_sitter.ts_query_cursor_exec_with_options(@ptrCast(self), @ptrCast(query), @bitCast(node), @ptrCast(options));
+    }
+
     pub fn didExceedMatchLimit(self: *const Self) bool {
         return tree_sitter.ts_query_cursor_did_exceed_match_limit(@ptrCast(self));
     }
@@ -321,12 +333,20 @@ pub const QueryCursor = opaque {
         tree_sitter.ts_query_cursor_set_match_limit(@ptrCast(self), limit);
     }
 
-    pub fn setByteRange(self: *Self, start_byte: u32, end_byte: u32) void {
-        tree_sitter.ts_query_cursor_set_byte_range(@ptrCast(self), start_byte, end_byte);
+    pub fn setByteRange(self: *Self, start_byte: u32, end_byte: u32) bool {
+        return tree_sitter.ts_query_cursor_set_byte_range(@ptrCast(self), start_byte, end_byte);
     }
 
-    pub fn setPointRange(self: *Self, start_point: Point, end_point: Point) void {
-        tree_sitter.ts_query_cursor_set_point_range(@ptrCast(self), @bitCast(start_point), @bitCast(end_point));
+    pub fn setPointRange(self: *Self, start_point: Point, end_point: Point) bool {
+        return tree_sitter.ts_query_cursor_set_point_range(@ptrCast(self), @bitCast(start_point), @bitCast(end_point));
+    }
+
+    pub fn setContainingByteRange(self: *Self, start_byte: u32, end_byte: u32) bool {
+        return tree_sitter.ts_query_cursor_set_containing_byte_range(@ptrCast(self), start_byte, end_byte);
+    }
+
+    pub fn setContainingPointRange(self: *Self, start_point: Point, end_point: Point) bool {
+        return tree_sitter.ts_query_cursor_set_containing_point_range(@ptrCast(self), @bitCast(start_point), @bitCast(end_point));
     }
 
     pub fn nextMatch(self: *Self, match: *QueryMatch) bool {
@@ -392,14 +412,17 @@ pub const LookaheadIterator = opaque {
     }
 };
 
-pub const InputEncoding = enum(u8) {
+pub const InputEncoding = enum(c_uint) {
     utf8,
-    utf16,
+    utf16_le,
+    utf16_be,
+    custom,
 };
 
-pub const SymbolType = enum(u8) {
+pub const SymbolType = enum(c_uint) {
     regular,
     anonymous,
+    supertype,
     auxiliary,
 };
 
@@ -415,10 +438,13 @@ pub const Range = extern struct {
     end_byte: u32,
 };
 
+pub const DecodeFunction = *const fn ([*]const u8, u32, *i32) callconv(.c) u32;
+
 pub const Input = extern struct {
     payload: *anyopaque,
-    read: *const fn (*anyopaque, u32, Point, *u32) callconv(.C) [*]const u8,
+    read: *const fn (*anyopaque, u32, Point, *u32) callconv(.c) [*]const u8,
     encoding: InputEncoding,
+    decode: ?DecodeFunction = null,
 };
 
 pub const LogType = enum(u8) {
@@ -428,7 +454,7 @@ pub const LogType = enum(u8) {
 
 pub const Logger = extern struct {
     payload: *anyopaque,
-    log: *const fn (*anyopaque, LogType, [*:0]const u8) callconv(.C) void,
+    log: *const fn (*anyopaque, LogType, [*:0]const u8) callconv(.c) void,
 };
 
 pub const InputEdit = extern struct {
@@ -485,8 +511,8 @@ pub const Node = extern struct {
         return @bitCast(tree_sitter.ts_node_end_point(@bitCast(self)));
     }
 
-    pub fn toString(self: Self) []const u8 {
-        return std.mem.span((tree_sitter.ts_node_string(@bitCast(self))));
+    pub fn toString(self: Self) NodeString {
+        return .{ .ptr = tree_sitter.ts_node_string(@bitCast(self)) };
     }
 
     pub fn isNull(self: Self) bool {
@@ -530,8 +556,8 @@ pub const Node = extern struct {
         return if (parent.isNull()) null else parent;
     }
 
-    pub fn childContainingDescendant(self: Self, descendant: Self) ?Self {
-        const child: Node = @bitCast(tree_sitter.ts_node_child_containing_descendant(@bitCast(self), @bitCast(descendant)));
+    pub fn childWithDescendant(self: Self, descendant: Self) ?Self {
+        const child: Node = @bitCast(tree_sitter.ts_node_child_with_descendant(@bitCast(self), @bitCast(descendant)));
         return if (child.isNull()) null else child;
     }
 
@@ -542,6 +568,12 @@ pub const Node = extern struct {
 
     pub fn getFieldNameForChild(self: Self, child_index: u32) ?[]const u8 {
         if (tree_sitter.ts_node_field_name_for_child(@bitCast(self), child_index)) |field| {
+            return std.mem.span(field);
+        } else return null;
+    }
+
+    pub fn getFieldNameForNamedChild(self: Self, named_child_index: u32) ?[]const u8 {
+        if (tree_sitter.ts_node_field_name_for_named_child(@bitCast(self), named_child_index)) |field| {
             return std.mem.span(field);
         } else return null;
     }
@@ -753,6 +785,64 @@ pub const QueryError = error{
     structureError,
     languageError,
 };
+
+pub const NodeString = struct {
+    ptr: ?[*:0]u8,
+
+    pub fn slice(self: NodeString) []const u8 {
+        if (self.ptr) |p| {
+            return std.mem.span(p);
+        }
+        return "";
+    }
+
+    pub fn deinit(self: NodeString) void {
+        if (self.ptr) |p| {
+            std.c.free(@ptrCast(p));
+        }
+    }
+};
+
+pub const ParseState = extern struct {
+    payload: ?*anyopaque,
+    current_byte_offset: u32,
+    has_error: bool,
+};
+
+pub const ParseOptions = extern struct {
+    payload: ?*anyopaque = null,
+    progress_callback: ?*const fn (*ParseState) callconv(.c) bool = null,
+};
+
+pub const QueryCursorState = extern struct {
+    payload: ?*anyopaque,
+    current_byte_offset: u32,
+};
+
+pub const QueryCursorOptions = extern struct {
+    payload: ?*anyopaque = null,
+    progress_callback: ?*const fn (*QueryCursorState) callconv(.c) bool = null,
+};
+
+pub const LanguageMetadata = extern struct {
+    major_version: u8,
+    minor_version: u8,
+    patch_version: u8,
+};
+
+pub fn setAllocator(
+    new_malloc: ?*const fn (usize) callconv(.c) ?*anyopaque,
+    new_calloc: ?*const fn (usize, usize) callconv(.c) ?*anyopaque,
+    new_realloc: ?*const fn (?*anyopaque, usize) callconv(.c) ?*anyopaque,
+    new_free: ?*const fn (?*anyopaque) callconv(.c) void,
+) void {
+    tree_sitter.ts_set_allocator(
+        @ptrCast(new_malloc),
+        @ptrCast(new_calloc),
+        @ptrCast(new_realloc),
+        @ptrCast(new_free),
+    );
+}
 
 pub const LanguageGrammar = @import("grammars.zig").LanguageGrammar;
 pub const loadLanguage = @import("grammars.zig").loadLanguage;

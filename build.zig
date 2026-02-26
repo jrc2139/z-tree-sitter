@@ -68,8 +68,51 @@ pub fn build(b: *Build) !void {
     // Add include path for tree_sitter/api.h
     zts.addIncludePath(ts_dep.path("lib/include"));
 
-    // Tests - skipped for now (need Zig 0.15 test API update)
-    // Examples - skipped for now
+    // Tests
+    {
+        const test_treesitter_mod = b.createModule(.{
+            .root_source_file = b.path("tests/treesitter.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        test_treesitter_mod.addImport("zts", zts);
+        test_treesitter_mod.linkLibrary(c_tree_sitter);
+        const test_treesitter = b.addTest(.{
+            .root_module = test_treesitter_mod,
+        });
+
+        const test_grammars_mod = b.createModule(.{
+            .root_source_file = b.path("tests/grammars.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        test_grammars_mod.addImport("zts", zts);
+        test_grammars_mod.linkLibrary(c_tree_sitter);
+        const test_grammars = b.addTest(.{
+            .root_module = test_grammars_mod,
+        });
+
+        const test_step = b.step("test", "Run tests");
+        test_step.dependOn(&b.addRunArtifact(test_treesitter).step);
+        test_step.dependOn(&b.addRunArtifact(test_grammars).step);
+    }
+
+    // Example
+    {
+        const example = b.addExecutable(.{
+            .name = "parse-input",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("examples/parse-input.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        example.root_module.addImport("zts", zts);
+        example.root_module.linkLibrary(c_tree_sitter);
+
+        const example_step = b.step("example", "Run parse-input example");
+        example_step.dependOn(&b.addRunArtifact(example).step);
+    }
 }
 
 fn buildLanguageGrammar(

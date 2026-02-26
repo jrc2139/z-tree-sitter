@@ -8,7 +8,12 @@ test "grammars" {
     defer p.deinit();
 
     inline for (std.meta.fields(zts.LanguageGrammar)) |lang| {
-        const zig = try zts.loadLanguage(@enumFromInt(lang.value));
-        defer zig.deinit();
+        const lg: zts.LanguageGrammar = @enumFromInt(lang.value);
+        if (zts.loadLanguage(lg)) |grammar| {
+            defer grammar.deinit();
+            try p.setLanguage(grammar);
+        } else |_| {
+            // Grammar not enabled in this build - skip
+        }
     }
 }
