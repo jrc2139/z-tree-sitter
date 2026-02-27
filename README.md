@@ -1,13 +1,13 @@
-# z-tree-sitter 🌳
+# z-tree-sitter
 
-A Zig package that provides a complete wrapper around [tree-sitter API](https://tree-sitter.github.io/tree-sitter/), along with built-in support for well-known languages grammar (see [supported languages grammar](#supported-languages-grammar)). The current version of z-tree-sitter supports tree-sitter 0.26.3.
+A Zig package that provides a complete wrapper around [tree-sitter API](https://tree-sitter.github.io/tree-sitter/), along with built-in support for well-known languages grammar (see [supported languages grammar](#supported-languages-grammar)). The current version of z-tree-sitter supports tree-sitter 0.26.6.
 
 ## Documentation
 You can find documentation directly from the [tree-sitter API header](https://github.com/tree-sitter/tree-sitter/blob/master/lib/include/tree_sitter/api.h) or on the [tree-sitter website](https://tree-sitter.github.io/tree-sitter/).
 
 All wrapper functions and types are demonstrated in the [tests file](https://github.com/lfcm64/z-tree-sitter/tree/main/tests), where you can see Zig equivalents of the C tree-sitter API.
 
-* Run tests with `zig build test -- --all-language`
+* Run tests with `zig build test -- --all-languages`
 * Run an example with `zig build example-<name> -- --language zig`
 
 Example code is included in the [examples](https://github.com/lfcm64/z-tree-sitter/tree/main/examples) directory.
