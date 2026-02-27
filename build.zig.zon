@@ -181,13 +181,13 @@
         },
 
         .sql = .{
-            .url = "https://github.com/DerekStride/tree-sitter-sql/archive/refs/tags/v0.3.11.tar.gz",
-            .hash = "N-V-__8AABd8CgA0FRfWloPx3uz97k95_oCeAW3JaTxjbGkU",
+            .url = "https://github.com/jrc2139/z-tree-sitter/releases/download/grammar-assets/tree-sitter-sql-0.3.11.tar.gz",
+            .hash = "N-V-__8AAKRbIAGk3RwRWMIwfuGChgeneB9sKiEsIKm4wvFT",
         },
 
         .swift = .{
-            .url = "https://github.com/alex-pinkus/tree-sitter-swift/archive/refs/tags/0.7.1.tar.gz",
-            .hash = "N-V-__8AAANXFQDOdj-JLpPWNB36JD1O1JVB2BQrNkbI-uax",
+            .url = "https://github.com/jrc2139/z-tree-sitter/releases/download/grammar-assets/tree-sitter-swift-0.7.1.tar.gz",
+            .hash = "N-V-__8AAArpKwGmiEiswOS3y-WpMnOtkF8AKXw2kZA8hr5e",
         },
 
         .yaml = .{

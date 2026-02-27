@@ -13,8 +13,6 @@ const Grammar = struct {
     name: []const u8,
     root: []const u8 = "src",
     scanner: bool = true,
-    /// Upstream tarball lacks parser.c; requires tree-sitter CLI to generate at build time.
-    needs_generate: bool = false,
 };
 
 pub fn build(b: *Build) !void {
@@ -48,7 +46,7 @@ pub fn build(b: *Build) !void {
         ) orelse all_opt or grammar_map.contains(g.name);
 
         if (grammar_opt) {
-            const grammar_build = try buildLanguageGrammar(b, target, optimize, g, &version_check.step);
+            const grammar_build = try buildLanguageGrammar(b, target, optimize, g);
             b.installArtifact(grammar_build);
             zts.linkLibrary(grammar_build);
         }
@@ -158,7 +156,6 @@ fn buildLanguageGrammar(
     target: Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     g: Grammar,
-    version_check: *Step,
 ) !*Step.Compile {
     const source_root = b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
 
@@ -170,14 +167,6 @@ fn buildLanguageGrammar(
             .optimize = optimize,
         }),
     });
-
-    // Grammars whose tarballs lack parser.c need tree-sitter CLI to generate it
-    if (g.needs_generate) {
-        const gen_cmd = b.addSystemCommand(&.{ "tree-sitter", "generate" });
-        gen_cmd.setCwd(source_root);
-        gen_cmd.step.dependOn(version_check);
-        lib.step.dependOn(&gen_cmd.step);
-    }
 
     const default_files = &.{ "parser.c", "scanner.c" };
     lib.addCSourceFiles(.{
@@ -349,8 +338,8 @@ const grammars = [_]Grammar{
     .{ .name = "ruby" },
     .{ .name = "rust" },
     .{ .name = "scala" },
-    .{ .name = "sql", .needs_generate = true },
-    .{ .name = "swift", .needs_generate = true },
+    .{ .name = "sql" },
+    .{ .name = "swift" },
     .{ .name = "toml" },
     .{ .name = "tsx", .root = "tsx/src" },
     .{ .name = "typescript", .root = "typescript/src" },
