@@ -665,6 +665,14 @@ pub fn editNodes(nodes: [*]Node, edit_input: [*]const InputEdit) void {
     tree_sitter.ts_node_edit(@ptrCast(nodes), @ptrCast(edit_input));
 }
 
+pub fn editPoint(point: *Point, point_byte: *u32, input_edit: *const InputEdit) void {
+    tree_sitter.ts_point_edit(@ptrCast(point), point_byte, @ptrCast(input_edit));
+}
+
+pub fn editRange(range: *Range, input_edit: *const InputEdit) void {
+    tree_sitter.ts_range_edit(@ptrCast(range), @ptrCast(input_edit));
+}
+
 pub const TreeCursor = extern struct {
     tree: *const anyopaque,
     id: *const anyopaque,
