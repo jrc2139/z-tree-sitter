@@ -157,17 +157,7 @@ fn buildLanguageGrammar(
     optimize: std.builtin.OptimizeMode,
     g: Grammar,
 ) !*Step.Compile {
-    // Use vendored sources if present, otherwise fall back to URL dependency
-    const source_root: std.Build.LazyPath = blk: {
-        var probe_buf: [256]u8 = undefined;
-        const probe_path = std.fmt.bufPrint(&probe_buf, "grammars/{s}/{s}/parser.c", .{ g.name, g.root }) catch unreachable;
-        if (b.build_root.handle.openFile(probe_path, .{})) |f| {
-            f.close();
-            break :blk b.path(b.fmt("grammars/{s}", .{g.name}));
-        } else |_| {
-            break :blk b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
-        }
-    };
+    const source_root = b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
 
     const lib = b.addLibrary(.{
         .name = g.name,
