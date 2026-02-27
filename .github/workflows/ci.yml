@@ -33,11 +33,8 @@ jobs:
       - name: Format check
         run: zig fmt --check src/ examples/ tests/
 
-      - name: Build (zig grammar)
-        run: zig build -- --language zig
+      - name: Build (all grammars)
+        run: zig build -- --all-languages
 
-      - name: Build check
-        run: zig build check
-
-      - name: Run tests
-        run: zig build test -- --language zig --summary all
+- name: Run tests
+        run: zig build test -- --all-languages --summary all
