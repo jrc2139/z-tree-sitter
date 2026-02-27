@@ -1,20 +1,14 @@
 const std = @import("std");
-const builtin = @import("builtin");
 
 const Build = std.Build;
 const Step = std.Build.Step;
 
 const eql = std.mem.eql;
 
-/// tree-sitter CLI version to download for grammar generation (swift)
-const tree_sitter_cli_version = "0.26.6";
-
 const Grammar = struct {
     name: []const u8,
     root: []const u8 = "src",
     scanner: bool = true,
-    /// If true, run `tree-sitter generate` before compiling (requires tree-sitter-cli)
-    generate: bool = false,
 };
 
 pub fn build(b: *Build) !void {
@@ -143,18 +137,6 @@ fn buildLanguageGrammar(
         }),
     });
 
-    // For grammars that need generation, run tree-sitter generate first
-    if (g.generate) {
-        const cli_path = ensureTreeSitterCli(b) catch {
-            std.log.err("Failed to download tree-sitter CLI v{s} for grammar generation.", .{tree_sitter_cli_version});
-            return error.TreeSitterCliNotFound;
-        };
-        const gen_step = b.addSystemCommand(&.{cli_path});
-        gen_step.addArg("generate");
-        gen_step.setCwd(source_root);
-        lib.step.dependOn(&gen_step.step);
-    }
-
     const default_files = &.{ "parser.c", "scanner.c" };
     lib.addCSourceFiles(.{
         .root = source_root.path(b, g.root),
@@ -242,78 +224,6 @@ fn isSupportedGrammar(name: []const u8) bool {
     return false;
 }
 
-/// Ensure tree-sitter CLI binary is available, downloading it if necessary.
-/// Caches the binary in .zig-cache/tree-sitter-cli/ for subsequent builds.
-fn ensureTreeSitterCli(b: *Build) ![]const u8 {
-    const cache_dir = b.pathFromRoot(".zig-cache/tree-sitter-cli");
-    const bin_path = b.fmt("{s}/tree-sitter", .{cache_dir});
-
-    // Return cached binary if it exists
-    std.fs.cwd().access(bin_path, .{}) catch {
-        // Binary not cached -- download it
-        const os_str = switch (builtin.os.tag) {
-            .macos => "macos",
-            .linux => "linux",
-            .windows => "windows",
-            else => return error.UnsupportedPlatform,
-        };
-        const arch_str = switch (builtin.cpu.arch) {
-            .aarch64 => "arm64",
-            .x86_64 => "x64",
-            .x86 => "x86",
-            .arm => "arm",
-            else => return error.UnsupportedPlatform,
-        };
-
-        const url = b.fmt(
-            "https://github.com/tree-sitter/tree-sitter/releases/download/v{s}/tree-sitter-{s}-{s}.gz",
-            .{ tree_sitter_cli_version, os_str, arch_str },
-        );
-        const gz_path = b.fmt("{s}/tree-sitter.gz", .{cache_dir});
-
-        std.fs.cwd().makePath(cache_dir) catch return error.TreeSitterCliDownloadFailed;
-
-        // Download
-        const dl = std.process.Child.run(.{
-            .allocator = b.allocator,
-            .argv = &.{ "curl", "-fsSL", "-o", gz_path, url },
-        }) catch return error.TreeSitterCliDownloadFailed;
-        if (!childExitedOk(dl.term)) {
-            std.log.err("curl failed: {s}", .{dl.stderr});
-            return error.TreeSitterCliDownloadFailed;
-        }
-
-        // Decompress
-        const gz = std.process.Child.run(.{
-            .allocator = b.allocator,
-            .argv = &.{ "gunzip", gz_path },
-        }) catch return error.TreeSitterCliDownloadFailed;
-        if (!childExitedOk(gz.term)) {
-            std.log.err("gunzip failed: {s}", .{gz.stderr});
-            return error.TreeSitterCliDownloadFailed;
-        }
-
-        // Make executable
-        const chmod = std.process.Child.run(.{
-            .allocator = b.allocator,
-            .argv = &.{ "chmod", "+x", bin_path },
-        }) catch return error.TreeSitterCliDownloadFailed;
-        if (!childExitedOk(chmod.term)) {
-            std.log.err("chmod failed: {s}", .{chmod.stderr});
-            return error.TreeSitterCliDownloadFailed;
-        }
-    };
-
-    return bin_path;
-}
-
-fn childExitedOk(term: std.process.Child.Term) bool {
-    return switch (term) {
-        .Exited => |code| code == 0,
-        else => false,
-    };
-}
-
 const grammars = [_]Grammar{
     .{ .name = "bash" },
     .{ .name = "c", .scanner = false },
@@ -351,8 +261,8 @@ const grammars = [_]Grammar{
     .{ .name = "ruby" },
     .{ .name = "rust" },
     .{ .name = "scala" },
-    .{ .name = "sql", .generate = true },
-    .{ .name = "swift", .generate = true },
+    .{ .name = "sql" },
+    .{ .name = "swift" },
     .{ .name = "toml" },
     .{ .name = "tsx", .root = "tsx/src" },
     .{ .name = "typescript", .root = "typescript/src" },

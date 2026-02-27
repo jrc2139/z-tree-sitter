@@ -59,8 +59,6 @@ You can then load and use the imported grammar languages by calling `zts.loadLan
 ### Supported languages Grammar
 Here is a list of all 37 available languages grammars:
 
-> **Note:** Swift requires [tree-sitter-cli](https://github.com/tree-sitter/tree-sitter/releases) to be installed for build-time parser generation.
-
 - [x] [bash](https://github.com/tree-sitter/tree-sitter-bash)
 - [x] [c](https://github.com/tree-sitter/tree-sitter-c)
 - [x] [cpp](https://github.com/tree-sitter/tree-sitter-cpp)
