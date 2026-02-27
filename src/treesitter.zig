@@ -928,3 +928,4 @@ pub fn setAllocator(
 pub const LanguageGrammar = @import("grammars.zig").LanguageGrammar;
 pub const loadLanguage = @import("grammars.zig").loadLanguage;
 pub const loadLanguageComptime = @import("grammars.zig").loadLanguageComptime;
+pub const logging = @import("logging.zig");
