@@ -321,7 +321,7 @@ const grammars = [_]Grammar{
     .{ .name = "cpp" },
     .{ .name = "c_sharp" },
     .{ .name = "dart" },
-    .{ .name = "dockerfile", .scanner = false },
+    .{ .name = "dockerfile" },
     .{ .name = "elixir" },
     .{ .name = "elm" },
     .{ .name = "erlang", .scanner = false },
