@@ -5,6 +5,10 @@ const Step = std.Build.Step;
 
 const eql = std.mem.eql;
 
+/// Minimum tree-sitter CLI version for grammar generation.
+/// Must match tree_sitter_api version in build.zig.zon.
+const tree_sitter_version = "0.26.6";
+
 const Grammar = struct {
     name: []const u8,
     root: []const u8 = "src",
@@ -32,7 +36,8 @@ pub fn build(b: *Build) !void {
     config.addOption(bool, "all", all_opt);
 
     // Grammars options
-    for (grammars) |g| {
+    var selected_grammars: [grammars.len]bool = undefined;
+    for (grammars, 0..) |g, i| {
         const grammar_opt = b.option(
             bool,
             g.name,
@@ -46,6 +51,7 @@ pub fn build(b: *Build) !void {
         }
 
         config.addOption(bool, g.name, grammar_opt);
+        selected_grammars[i] = grammar_opt;
     }
     zts.addOptions("config", config);
 
@@ -107,6 +113,41 @@ pub fn build(b: *Build) !void {
 
         const example_step = b.step("example", "Run parse-input example");
         example_step.dependOn(&b.addRunArtifact(example).step);
+    }
+
+    // Generate step: regenerate vendored parser.c files
+    {
+        const generate_step = b.step("generate", "Regenerate vendored parser.c files (requires tree-sitter CLI)");
+        const version_check = VersionCheckStep.create(b);
+
+        for (grammars, 0..) |g, i| {
+            if (!selected_grammars[i]) continue;
+
+            const grammar_js_dir: []const u8 = if (eql(u8, g.root, "src"))
+                ""
+            else if (std.mem.endsWith(u8, g.root, "/src"))
+                g.root[0 .. g.root.len - "/src".len]
+            else
+                g.root;
+
+            const cwd_path = if (grammar_js_dir.len == 0)
+                b.fmt("grammars/{s}", .{g.name})
+            else
+                b.fmt("grammars/{s}/{s}", .{ g.name, grammar_js_dir });
+
+            // Skip grammars without a vendored grammar.js
+            const grammar_js_probe = b.fmt("{s}/grammar.js", .{cwd_path});
+            if (b.build_root.handle.openFile(grammar_js_probe, .{})) |f| {
+                f.close();
+            } else |_| {
+                continue;
+            }
+
+            const gen_cmd = b.addSystemCommand(&.{ "tree-sitter", "generate" });
+            gen_cmd.setCwd(b.path(cwd_path));
+            gen_cmd.step.dependOn(&version_check.step);
+            generate_step.dependOn(&gen_cmd.step);
+        }
     }
 }
 
@@ -223,6 +264,52 @@ fn isSupportedGrammar(name: []const u8) bool {
     }
     return false;
 }
+
+const VersionCheckStep = struct {
+    step: Step,
+
+    fn create(owner: *Build) *VersionCheckStep {
+        const self = owner.allocator.create(VersionCheckStep) catch @panic("OOM");
+        self.* = .{
+            .step = Step.init(.{
+                .id = .custom,
+                .name = "tree-sitter version check",
+                .owner = owner,
+                .makeFn = make,
+            }),
+        };
+        return self;
+    }
+
+    fn make(step: *Step, options: Step.MakeOptions) !void {
+        _ = options;
+        const allocator = step.owner.allocator;
+
+        const result = std.process.Child.run(.{
+            .allocator = allocator,
+            .argv = &.{ "tree-sitter", "--version" },
+        }) catch {
+            return step.fail("tree-sitter CLI not found. Install with: npm install -g tree-sitter-cli@{s}", .{tree_sitter_version});
+        };
+        defer allocator.free(result.stdout);
+        defer allocator.free(result.stderr);
+
+        const trimmed = std.mem.trimRight(u8, result.stdout, &std.ascii.whitespace);
+        const version_str = if (std.mem.lastIndexOfScalar(u8, trimmed, ' ')) |idx|
+            trimmed[idx + 1 ..]
+        else
+            trimmed;
+
+        const actual = std.SemanticVersion.parse(version_str) catch {
+            return step.fail("could not parse tree-sitter version from: {s}", .{trimmed});
+        };
+        const required = comptime std.SemanticVersion.parse(tree_sitter_version) catch unreachable;
+
+        if (actual.order(required) == .lt) {
+            return step.fail("tree-sitter CLI {s} is too old, need >= {s}", .{ version_str, tree_sitter_version });
+        }
+    }
+};
 
 const grammars = [_]Grammar{
     .{ .name = "bash" },

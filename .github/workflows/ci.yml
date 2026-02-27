@@ -11,6 +11,7 @@ permissions:
 
 env:
   ZIG_VERSION: "0.15.2"
+  TREE_SITTER_VERSION: "0.26.6"
 
 jobs:
   test:
@@ -38,3 +39,18 @@ jobs:
 
       - name: Run tests
         run: zig build test -- --all-languages --summary all
+
+  generate-check:
+    name: Check parser.c freshness
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - name: Install tree-sitter CLI
+        run: npm install -g tree-sitter-cli@${{ env.TREE_SITTER_VERSION }}
+      - name: Regenerate parsers
+        run: zig build generate -- --all-languages
+      - name: Check for stale parser.c files
+        run: git diff --exit-code -- 'grammars/'
