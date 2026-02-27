@@ -194,6 +194,46 @@
             .url = "https://github.com/tree-sitter-grammars/tree-sitter-yaml/archive/refs/tags/v0.7.2.tar.gz",
             .hash = "122033248d153e9548aff821ae82952e072ea35f6f153e5d5ecdc7db3a8e46df83d6",
         },
+
+        .cmake = .{
+            .url = "https://github.com/uyha/tree-sitter-cmake/archive/refs/tags/v0.7.2.tar.gz",
+            .hash = "12201fed0414b8d07308537962845db038d4fca9bad6ad64fbd089479fe1fa202526",
+        },
+
+        .graphql = .{
+            .url = "git+https://github.com/bkegley/tree-sitter-graphql#5e66e961eee421786bdda8495ed1db045e06b5fe",
+            .hash = "122036d5d2f72008c460c6f0fdaaf728d59bd1d478a69a0051eebbca587ba7ba65ce",
+        },
+
+        .hcl = .{
+            .url = "https://github.com/tree-sitter-grammars/tree-sitter-hcl/archive/refs/tags/v1.2.0.tar.gz",
+            .hash = "1220fefe17879043761e949d80f46c7040560dd39b508b116f97600d6fd5cfd9631a",
+        },
+
+        .nix = .{
+            .url = "https://github.com/nix-community/tree-sitter-nix/archive/refs/tags/v0.3.0.tar.gz",
+            .hash = "1220b67a644bf795ff06e9988388f6b3e68566017605399958464e8f9816abb61bb9",
+        },
+
+        .objc = .{
+            .url = "https://github.com/tree-sitter-grammars/tree-sitter-objc/archive/refs/tags/v3.0.2.tar.gz",
+            .hash = "12208c3176f65add70b9a84dfec3415ea0322d414f35f22c431cc90c810726fa768a",
+        },
+
+        .tsx = .{
+            .url = "https://github.com/tree-sitter/tree-sitter-typescript/archive/refs/tags/v0.23.2.tar.gz",
+            .hash = "N-V-__8AALhpIQFpocCrfuYTb_Vzvxj3QG0T-yqi9x1QNRNM",
+        },
+
+        .vue = .{
+            .url = "git+https://github.com/tree-sitter-grammars/tree-sitter-vue#ce8011a414fdf8091f4e4071752efc376f4afb08",
+            .hash = "122065ca702e01c852bf5bfa84af5673016597ada90dd088ecec5297950660b38311",
+        },
+
+        .xml = .{
+            .url = "https://github.com/tree-sitter-grammars/tree-sitter-xml/archive/refs/tags/v0.7.0.tar.gz",
+            .hash = "12203a0e283798222bd61eefb876da378e0cae2469ba2680d07ece4a90885286a421",
+        },
     },
 
     .paths = .{

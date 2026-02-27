@@ -10,6 +10,7 @@ pub const grammars = @cImport({
     if (config.css) @cInclude("css.h");
     if (config.cpp) @cInclude("cpp.h");
     if (config.c_sharp) @cInclude("c_sharp.h");
+    if (config.cmake) @cInclude("cmake.h");
     if (config.dart) @cInclude("dart.h");
     if (config.dockerfile) @cInclude("dockerfile.h");
     if (config.elixir) @cInclude("elixir.h");
@@ -17,7 +18,9 @@ pub const grammars = @cImport({
     if (config.erlang) @cInclude("erlang.h");
     if (config.fsharp) @cInclude("fsharp.h");
     if (config.go) @cInclude("go.h");
+    if (config.graphql) @cInclude("graphql.h");
     if (config.haskell) @cInclude("haskell.h");
+    if (config.hcl) @cInclude("hcl.h");
     if (config.html) @cInclude("html.h");
     if (config.java) @cInclude("java.h");
     if (config.javascript) @cInclude("javascript.h");
@@ -28,6 +31,8 @@ pub const grammars = @cImport({
     if (config.make) @cInclude("make.h");
     if (config.markdown) @cInclude("markdown.h");
     if (config.nim) @cInclude("nim.h");
+    if (config.nix) @cInclude("nix.h");
+    if (config.objc) @cInclude("objc.h");
     if (config.ocaml) @cInclude("ocaml.h");
     if (config.perl) @cInclude("perl.h");
     if (config.php) @cInclude("php.h");
@@ -39,7 +44,10 @@ pub const grammars = @cImport({
     if (config.sql) @cInclude("sql.h");
     if (config.swift) @cInclude("swift.h");
     if (config.toml) @cInclude("toml.h");
+    if (config.tsx) @cInclude("tsx.h");
     if (config.typescript) @cInclude("typescript.h");
+    if (config.vue) @cInclude("vue.h");
+    if (config.xml) @cInclude("xml.h");
     if (config.yaml) @cInclude("yaml.h");
     if (config.zig) @cInclude("zig.h");
 });
