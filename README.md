@@ -8,7 +8,7 @@ You can find documentation directly from the [tree-sitter API header](https://gi
 All wrapper functions and types are demonstrated in the [tests file](https://github.com/lfcm64/z-tree-sitter/tree/main/tests), where you can see Zig equivalents of the C tree-sitter API.
 
 * Run tests with `zig build test -- --all-languages`
-* Run an example with `zig build example-<name> -- --language zig`
+* Run the example with `zig build example -- --language zig`
 
 Example code is included in the [examples](https://github.com/lfcm64/z-tree-sitter/tree/main/examples) directory.
 

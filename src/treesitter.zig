@@ -171,9 +171,9 @@ pub const Parser = opaque {
 pub const Tree = opaque {
     const Self = @This();
 
-    pub fn copy(tree: *Self) !*const Self {
+    pub fn copy(tree: *Self) !*Self {
         if (tree_sitter.ts_tree_copy(@ptrCast(tree))) |copied_tree| {
-            return @ptrCast(copied_tree);
+            return @ptrCast(@constCast(copied_tree));
         } else return error.TreeCopyFail;
     }
 
@@ -216,8 +216,9 @@ pub const Query = opaque {
     const Self = @This();
 
     pub fn init(language: *const Language, source: []const u8) !*Self {
+        var error_offset: u32 = 0;
         var error_type: c_uint = 0;
-        if (tree_sitter.ts_query_new(@ptrCast(language), @ptrCast(source), @intCast(source.len), 0, &error_type)) |query| {
+        if (tree_sitter.ts_query_new(@ptrCast(language), @ptrCast(source), @intCast(source.len), &error_offset, &error_type)) |query| {
             return switch (error_type) {
                 0 => @ptrCast(query),
                 1 => QueryError.syntaxError,

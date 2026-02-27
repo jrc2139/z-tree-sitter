@@ -31,8 +31,10 @@ test "parser" {
 
     const text = "const Foo = 0;";
 
-    _ = try p.parseString(null, text);
-    _ = try p.parseStringEncoding(null, text, .utf16_le);
+    const tree1 = try p.parseString(null, text);
+    tree1.deinit();
+    const tree2 = try p.parseStringEncoding(null, text, .utf16_le);
+    tree2.deinit();
 
     p.reset();
 
@@ -56,6 +58,7 @@ test "tree" {
     defer tree.deinit();
 
     const tree_copy = try tree.copy();
+    defer tree_copy.deinit();
 
     _ = tree.rootNode();
 
@@ -107,6 +110,7 @@ test "node" {
     try p.setLanguage(zig);
 
     const tree = try p.parseString(null, text);
+    defer tree.deinit();
     const node = tree.rootNode();
 
     _ = node.getType();
@@ -174,6 +178,7 @@ test "tree cursor" {
     try p.setLanguage(zig);
 
     const tree = try p.parseString(null, text);
+    defer tree.deinit();
     const root_node = tree.rootNode();
 
     var cursor = TreeCursor.init(root_node);
@@ -211,6 +216,7 @@ test "query and query cursor" {
     try p.setLanguage(zig);
 
     const tree = try p.parseString(null, text);
+    defer tree.deinit();
     const node = tree.rootNode();
 
     const query_source = "";
@@ -283,7 +289,12 @@ test "parse options" {
     try p.setLanguage(zig);
 
     const options = zts.ParseOptions{};
-    _ = options;
+    const tree = try p.parseString(null, "const x = 1;");
+    defer tree.deinit();
+
+    // Verify ParseOptions fields are accessible and defaulted
+    try std.testing.expect(options.payload == null);
+    try std.testing.expect(options.progress_callback == null);
 }
 
 test "node string memory management" {

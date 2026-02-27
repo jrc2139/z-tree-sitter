@@ -6,8 +6,6 @@ const Step = std.Build.Step;
 
 const eql = std.mem.eql;
 
-const allocator = std.heap.page_allocator;
-
 const Grammar = struct {
     name: []const u8,
     root: []const u8 = "src",
@@ -20,7 +18,7 @@ pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const grammar_map = try createGrammarInstallMap();
+    const grammar_map = try createGrammarInstallMap(b.allocator);
 
     const zts = b.addModule("zts", .{
         .root_source_file = b.path("src/treesitter.zig"),
@@ -171,10 +169,10 @@ fn buildLanguageGrammar(
 
 fn generateHeaderFile(b: *Build, g: Grammar, source_root: std.Build.LazyPath) ![]const u8 {
     const path = source_root.getPath(b);
-    // Use cwd-relative open since getPath may return a relative path
-    const dir = try std.fs.cwd().openDir(path, .{});
+    var dir = try std.fs.cwd().openDir(path, .{});
+    defer dir.close();
 
-    const file_name = try std.fmt.allocPrint(allocator, "{s}.h", .{g.name});
+    const file_name = try std.fmt.allocPrint(b.allocator, "{s}.h", .{g.name});
 
     var buf: [32]u8 = undefined;
     const upper_name = std.ascii.upperString(&buf, file_name);
@@ -182,8 +180,7 @@ fn generateHeaderFile(b: *Build, g: Grammar, source_root: std.Build.LazyPath) ![
     const f = try dir.createFile(file_name, .{});
     defer f.close();
 
-    // Build header content manually
-    const header = try std.fmt.allocPrint(allocator,
+    const header = try std.fmt.allocPrint(b.allocator,
         \\#ifndef TREE_SITTER_{s}_H_
         \\#define TREE_SITTER_{s}_H_
         \\typedef struct TSLanguage TSLanguage;
@@ -213,11 +210,11 @@ pub fn shouldInstallAllGrammar() bool {
     return false;
 }
 
-pub fn createGrammarInstallMap() !std.StringHashMap(bool) {
+pub fn createGrammarInstallMap(alloc: std.mem.Allocator) !std.StringHashMap(bool) {
     var isArg = false;
     var isGrammar = false;
 
-    var grammar_map = std.StringHashMap(bool).init(allocator);
+    var grammar_map = std.StringHashMap(bool).init(alloc);
 
     var args = std.process.args();
     while (args.next()) |arg| {
@@ -245,10 +242,8 @@ fn isSupportedGrammar(name: []const u8) bool {
 /// Get path to tree-sitter CLI binary
 /// First tries system PATH, then falls back to bundled dependency
 fn getTreeSitterCli(b: *Build) ![]const u8 {
-    _ = b;
-    // Try to find tree-sitter in PATH first
     const result = std.process.Child.run(.{
-        .allocator = allocator,
+        .allocator = b.allocator,
         .argv = &.{ "which", "tree-sitter" },
     }) catch {
         return error.TreeSitterNotFound;
