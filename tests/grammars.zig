@@ -17,3 +17,9 @@ test "grammars" {
         }
     }
 }
+
+test "comptime grammar loading" {
+    const zig_lang = zts.loadLanguageComptime(.zig);
+    try std.testing.expect(zig_lang.getSymbolCount() > 0);
+    try std.testing.expect(zig_lang.getAbiVersion() >= 13);
+}

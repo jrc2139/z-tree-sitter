@@ -34,8 +34,8 @@ pub const Language = opaque {
         return std.mem.span(tree_sitter.ts_language_symbol_name(@ptrCast(language), symbol));
     }
 
-    pub fn getSymbolForName(language: *const Self, string: []const u8, length: usize, is_named: bool) Symbol {
-        return tree_sitter.ts_language_symbol_for_name(@ptrCast(language), @ptrCast(string), @intCast(length), is_named);
+    pub fn getSymbolForName(language: *const Self, string: []const u8, is_named: bool) Symbol {
+        return tree_sitter.ts_language_symbol_for_name(@ptrCast(language), @ptrCast(string), @intCast(string.len), is_named);
     }
 
     pub fn getFieldCount(language: *const Self) u32 {
@@ -46,8 +46,8 @@ pub const Language = opaque {
         return std.mem.span(tree_sitter.ts_language_field_name_for_id(@ptrCast(language), id));
     }
 
-    pub fn getFieldIdForName(language: *const Self, name: []const u8, name_length: u32) FieldId {
-        return tree_sitter.ts_language_field_id_for_name(@ptrCast(language), @ptrCast(name), name_length);
+    pub fn getFieldIdForName(language: *const Self, name: []const u8) FieldId {
+        return tree_sitter.ts_language_field_id_for_name(@ptrCast(language), @ptrCast(name), @intCast(name.len));
     }
 
     pub fn getSymbolType(language: *const Self, symbol: Symbol) SymbolType {
@@ -68,12 +68,16 @@ pub const Language = opaque {
         return @ptrCast(tree_sitter.ts_language_metadata(@ptrCast(language)));
     }
 
-    pub fn getSupertypes(language: *const Self, length: *u32) ?[*]const Symbol {
-        return @ptrCast(tree_sitter.ts_language_supertypes(@ptrCast(language), length));
+    pub fn getSupertypes(language: *const Self) []const Symbol {
+        var length: u32 = 0;
+        const ptr: ?[*]const Symbol = @ptrCast(tree_sitter.ts_language_supertypes(@ptrCast(language), &length));
+        return if (ptr) |p| p[0..length] else &.{};
     }
 
-    pub fn getSubtypes(language: *const Self, supertype: Symbol, length: *u32) ?[*]const Symbol {
-        return @ptrCast(tree_sitter.ts_language_subtypes(@ptrCast(language), supertype, length));
+    pub fn getSubtypes(language: *const Self, supertype: Symbol) []const Symbol {
+        var length: u32 = 0;
+        const ptr: ?[*]const Symbol = @ptrCast(tree_sitter.ts_language_subtypes(@ptrCast(language), supertype, &length));
+        return if (ptr) |p| p[0..length] else &.{};
     }
 
     pub fn getNextState(language: *const Self, state: StateId, symbol: Symbol) StateId {
@@ -106,14 +110,16 @@ pub const Parser = opaque {
         }
     }
 
-    pub fn setIncludedRanges(self: *Self, ranges: []const Range, count: u32) !void {
-        if (!tree_sitter.ts_parser_set_included_ranges(@ptrCast(self), @ptrCast(ranges), count)) {
+    pub fn setIncludedRanges(self: *Self, ranges: []const Range) !void {
+        if (!tree_sitter.ts_parser_set_included_ranges(@ptrCast(self), @ptrCast(ranges), @intCast(ranges.len))) {
             return error.InvalidIncludedRanges;
         }
     }
 
-    pub fn getIncludedRanges(self: *Self, count: *u32) ?[*]const Range {
-        return @ptrCast(tree_sitter.ts_parser_included_ranges(@ptrCast(self), @ptrCast(count)));
+    pub fn getIncludedRanges(self: *Self) []const Range {
+        var count: u32 = 0;
+        const ptr: ?[*]const Range = @ptrCast(tree_sitter.ts_parser_included_ranges(@ptrCast(self), @ptrCast(&count)));
+        return if (ptr) |p| p[0..count] else &.{};
     }
 
     pub fn parse(self: *Self, old_tree: ?*const Tree, input: Input) !*Tree {
@@ -195,16 +201,20 @@ pub const Tree = opaque {
         } else return null;
     }
 
-    pub fn getIncludedRanges(tree: *Self, length: *u32) ?[*]Range {
-        return @ptrCast(tree_sitter.ts_tree_included_ranges(@ptrCast(tree), length));
+    pub fn getIncludedRanges(tree: *Self) RangeSlice {
+        var length: u32 = 0;
+        const ptr: ?[*]Range = @ptrCast(tree_sitter.ts_tree_included_ranges(@ptrCast(tree), &length));
+        return .{ .ptr = ptr, .len = length };
     }
 
     pub fn edit(tree: *Self, input_edit: *const InputEdit) void {
         tree_sitter.ts_tree_edit(@ptrCast(tree), @ptrCast(input_edit));
     }
 
-    pub fn getChangedRanges(old_tree: *Self, new_tree: *const Tree, length: *u32) ?[*]Range {
-        return @ptrCast(tree_sitter.ts_tree_get_changed_ranges(@ptrCast(old_tree), @ptrCast(new_tree), length));
+    pub fn getChangedRanges(old_tree: *Self, new_tree: *const Tree) RangeSlice {
+        var length: u32 = 0;
+        const ptr: ?[*]Range = @ptrCast(tree_sitter.ts_tree_get_changed_ranges(@ptrCast(old_tree), @ptrCast(new_tree), &length));
+        return .{ .ptr = ptr, .len = length };
     }
 
     pub fn printDotGraph(tree: *Self, fd: i32) void {
@@ -219,17 +229,16 @@ pub const Query = opaque {
         var error_offset: u32 = 0;
         var error_type: c_uint = 0;
         if (tree_sitter.ts_query_new(@ptrCast(language), @ptrCast(source), @intCast(source.len), &error_offset, &error_type)) |query| {
-            return switch (error_type) {
-                0 => @ptrCast(query),
-                1 => QueryError.syntaxError,
-                2 => QueryError.nodeTypeError,
-                3 => QueryError.fieldError,
-                4 => QueryError.captureError,
-                5 => QueryError.structureError,
-                6 => QueryError.languageError,
-                else => @panic("query error code not recognized"),
-            };
-        } else return error.QueryInitFail;
+            return @ptrCast(query);
+        } else return switch (error_type) {
+            1 => QueryError.syntaxError,
+            2 => QueryError.nodeTypeError,
+            3 => QueryError.fieldError,
+            4 => QueryError.captureError,
+            5 => QueryError.structureError,
+            6 => QueryError.languageError,
+            else => QueryError.queryInitFail,
+        };
     }
 
     pub fn deinit(self: *Self) void {
@@ -277,9 +286,11 @@ pub const Query = opaque {
         return tree_sitter.ts_query_is_pattern_guaranteed_at_step(@ptrCast(self), byte_offset);
     }
 
-    pub fn captureNameForId(self: *const Self, index: u32, length: *u32) ?[]const u8 {
+    pub fn captureNameForId(self: *const Self, index: u32) ?[]const u8 {
         if (self.captureCount() == 0) return null;
-        return std.mem.span(tree_sitter.ts_query_capture_name_for_id(@ptrCast(self), index, length));
+        var length: u32 = 0;
+        const ptr: ?[*]const u8 = tree_sitter.ts_query_capture_name_for_id(@ptrCast(self), index, &length);
+        return if (ptr) |p| p[0..length] else null;
     }
 
     pub fn captureQuantifierForId(self: *const Self, pattern_index: u32, capture_index: u32) ?Quantifier {
@@ -287,9 +298,11 @@ pub const Query = opaque {
         return @enumFromInt(tree_sitter.ts_query_capture_quantifier_for_id(@ptrCast(self), pattern_index, capture_index));
     }
 
-    pub fn stringValueForId(self: *const Self, index: u32, length: *u32) ?[]const u8 {
+    pub fn stringValueForId(self: *const Self, index: u32) ?[]const u8 {
         if (self.stringCount() == 0) return null;
-        return std.mem.span(tree_sitter.ts_query_string_value_for_id(@ptrCast(self), index, length));
+        var length: u32 = 0;
+        const ptr: ?[*]const u8 = tree_sitter.ts_query_string_value_for_id(@ptrCast(self), index, &length);
+        return if (ptr) |p| p[0..length] else null;
     }
 
     pub fn disableCapture(self: *Self, name: []const u8) void {
@@ -364,6 +377,20 @@ pub const QueryCursor = opaque {
 
     pub fn setMaxStartDepth(self: *Self, max_start_depth: u32) void {
         tree_sitter.ts_query_cursor_set_max_start_depth(@ptrCast(self), max_start_depth);
+    }
+
+    pub const MatchIterator = struct {
+        cursor: *QueryCursor,
+
+        pub fn next(self: *MatchIterator) ?QueryMatch {
+            var match: QueryMatch = undefined;
+            return if (self.cursor.nextMatch(&match)) match else null;
+        }
+    };
+
+    pub fn matches(self: *Self, query: *const Query, node: Node) MatchIterator {
+        self.exec(query, node);
+        return .{ .cursor = self };
     }
 };
 
@@ -592,8 +619,8 @@ pub const Node = extern struct {
         return tree_sitter.ts_node_named_child_count(@bitCast(self));
     }
 
-    pub fn getChildByFieldName(self: Self, name: []const u8, name_length: usize) ?Self {
-        const child: Node = @bitCast(tree_sitter.ts_node_child_by_field_name(@bitCast(self), @ptrCast(name), @intCast(name_length)));
+    pub fn getChildByFieldName(self: Self, name: []const u8) ?Self {
+        const child: Node = @bitCast(tree_sitter.ts_node_child_by_field_name(@bitCast(self), @ptrCast(name), @intCast(name.len)));
         return if (child.isNull()) null else child;
     }
 
@@ -658,6 +685,28 @@ pub const Node = extern struct {
 
     pub fn eq(self: Self, other: Self) bool {
         return tree_sitter.ts_node_eq(@bitCast(self), @bitCast(other));
+    }
+
+    pub const ChildIterator = struct {
+        node: Node,
+        index: u32,
+        count: u32,
+        named: bool,
+
+        pub fn next(self: *ChildIterator) ?Node {
+            if (self.index >= self.count) return null;
+            const child = if (self.named) self.node.getNamedChild(self.index) else self.node.getChild(self.index);
+            self.index += 1;
+            return child;
+        }
+    };
+
+    pub fn children(self: Self) ChildIterator {
+        return .{ .node = self, .index = 0, .count = self.getChildCount(), .named = false };
+    }
+
+    pub fn namedChildren(self: Self) ChildIterator {
+        return .{ .node = self, .index = 0, .count = self.getNamedChildCount(), .named = true };
     }
 };
 
@@ -773,6 +822,10 @@ pub const QueryMatch = extern struct {
     pattern_index: u16,
     capture_count: u16,
     captures: *const QueryCapture,
+
+    pub fn captureSlice(self: QueryMatch) []const QueryCapture {
+        return @as([*]const QueryCapture, @ptrCast(self.captures))[0..self.capture_count];
+    }
 };
 
 pub const QueryPredicateStepType = enum(u8) {
@@ -793,6 +846,25 @@ pub const QueryError = error{
     captureError,
     structureError,
     languageError,
+    queryInitFail,
+};
+
+pub const RangeSlice = struct {
+    ptr: ?[*]Range,
+    len: u32,
+
+    pub fn slice(self: RangeSlice) []const Range {
+        if (self.ptr) |p| {
+            return p[0..self.len];
+        }
+        return &.{};
+    }
+
+    pub fn deinit(self: RangeSlice) void {
+        if (self.ptr) |p| {
+            std.c.free(@ptrCast(p));
+        }
+    }
 };
 
 pub const NodeString = struct {
@@ -855,3 +927,4 @@ pub fn setAllocator(
 
 pub const LanguageGrammar = @import("grammars.zig").LanguageGrammar;
 pub const loadLanguage = @import("grammars.zig").loadLanguage;
+pub const loadLanguageComptime = @import("grammars.zig").loadLanguageComptime;

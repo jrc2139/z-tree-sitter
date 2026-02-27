@@ -51,3 +51,11 @@ pub inline fn loadLanguage(lg: LanguageGrammar) !*const Language {
     const c_func = @field(grammars, "tree_sitter_" ++ name);
     return if (c_func()) |lang| @ptrCast(lang) else error.InvalidLang;
 }
+
+pub inline fn loadLanguageComptime(comptime lg: LanguageGrammar) *const Language {
+    const name = @tagName(lg);
+    if (!@field(config, name)) @compileError("grammar '" ++ name ++ "' is not enabled in this build");
+
+    const c_func = @field(grammars, "tree_sitter_" ++ name);
+    return @ptrCast(c_func() orelse unreachable);
+}

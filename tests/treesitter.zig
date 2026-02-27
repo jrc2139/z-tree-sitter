@@ -31,11 +31,9 @@ test "parser" {
     const ranges = [_]Range{
         .{ .start_point = sp, .end_point = ep, .start_byte = 0, .end_byte = 0 },
     };
-    try p.setIncludedRanges(&ranges, 1);
-    var count: u32 = 0;
-    const included = p.getIncludedRanges(&count);
-    try std.testing.expect(included != null);
-    try std.testing.expectEqual(@as(u32, 1), count);
+    try p.setIncludedRanges(&ranges);
+    const included = p.getIncludedRanges();
+    try std.testing.expectEqual(@as(usize, 1), included.len);
 
     const text = "const Foo = 0;";
 
@@ -71,8 +69,9 @@ test "tree" {
 
     try std.testing.expect(tree.getLanguage() != null);
 
-    var length: u32 = 0;
-    try std.testing.expect(tree.getIncludedRanges(&length) != null);
+    const included = tree.getIncludedRanges();
+    defer included.deinit();
+    try std.testing.expect(included.slice().len > 0);
 
     const ie = zts.InputEdit{
         .start_byte = 6,
@@ -83,7 +82,8 @@ test "tree" {
         .new_end_point = Point{ .row = 0, .column = 10 },
     };
     tree.edit(&ie);
-    _ = tree.getChangedRanges(tree_copy, &length);
+    const changed = tree.getChangedRanges(tree_copy);
+    defer changed.deinit();
 }
 
 test "language" {
@@ -101,15 +101,14 @@ test "language" {
     _ = lang.getName();
 
     _ = lang.getSymbolName(1);
-    _ = lang.getSymbolForName("if", 2, true);
+    _ = lang.getSymbolForName("if", true);
     _ = lang.getFieldNameForId(1);
-    _ = lang.getFieldIdForName("if", 2);
+    _ = lang.getFieldIdForName("if");
     _ = lang.getSymbolType(1);
     _ = lang.getNextState(1, 1);
     _ = lang.getMetadata();
 
-    var supertype_len: u32 = 0;
-    _ = lang.getSupertypes(&supertype_len);
+    _ = lang.getSupertypes();
 }
 
 test "node" {
@@ -160,7 +159,7 @@ test "node" {
     _ = node.getFieldNameForNamedChild(0);
     _ = node.getNamedChild(0);
     _ = node.getNamedChildCount();
-    _ = node.getChildByFieldName("foo", 3);
+    _ = node.getChildByFieldName("foo");
     _ = node.getNextSibling();
     _ = node.getPrevSibling();
     _ = node.getDescendantCount();
@@ -258,13 +257,12 @@ test "query and query cursor" {
     _ = query.isPatternNonLocal(0);
     _ = query.isPatternGuaranteedAtStep(0);
 
-    var length: u32 = 0;
-    const capture_name = query.captureNameForId(0, &length);
+    const capture_name = query.captureNameForId(0);
     try std.testing.expect(capture_name != null);
     try std.testing.expectEqualStrings("decl", capture_name.?);
 
     _ = query.captureQuantifierForId(0, 0);
-    _ = query.stringValueForId(0, &length);
+    _ = query.stringValueForId(0);
 
     var cursor = try QueryCursor.init();
     defer cursor.deinit();
@@ -484,13 +482,11 @@ test "language getSubtypes" {
     const lang = try loadLanguage(.zig);
     defer lang.deinit();
 
-    var supertype_len: u32 = 0;
-    const supertypes = lang.getSupertypes(&supertype_len);
+    const supertypes = lang.getSupertypes();
 
-    if (supertype_len > 0) {
-        const first_supertype = supertypes.?[0];
-        var subtype_len: u32 = 0;
-        _ = lang.getSubtypes(first_supertype, &subtype_len);
+    if (supertypes.len > 0) {
+        const first_supertype = supertypes[0];
+        _ = lang.getSubtypes(first_supertype);
     }
 }
 
@@ -635,8 +631,7 @@ test "query pattern matching with captures" {
     try std.testing.expectEqual(@as(u32, 1), query.captureCount());
 
     // Verify capture name is "fn_name"
-    var name_len: u32 = 0;
-    const capture_name = query.captureNameForId(0, &name_len);
+    const capture_name = query.captureNameForId(0);
     try std.testing.expectEqualStrings("fn_name", capture_name.?);
 
     var cursor = try QueryCursor.init();
@@ -733,4 +728,121 @@ test "tree cursor depth-first traversal" {
     // Node count should match descendant count (which includes the root)
     try std.testing.expectEqual(root.getDescendantCount(), node_count);
     try std.testing.expect(max_depth >= 2);
+}
+
+test "node children iterator" {
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    defer zig.deinit();
+
+    try p.setLanguage(zig);
+
+    const tree = try p.parseString(null, "const x = 1;\nconst y = 2;");
+    defer tree.deinit();
+    const root = tree.rootNode();
+
+    var iter = root.children();
+    var count: u32 = 0;
+    while (iter.next()) |_| {
+        count += 1;
+    }
+    try std.testing.expectEqual(root.getChildCount(), count);
+}
+
+test "node named children iterator" {
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    defer zig.deinit();
+
+    try p.setLanguage(zig);
+
+    const tree = try p.parseString(null, "const x = 1;\nconst y = 2;");
+    defer tree.deinit();
+    const root = tree.rootNode();
+
+    var iter = root.namedChildren();
+    var count: u32 = 0;
+    while (iter.next()) |child| {
+        try std.testing.expect(child.isNamed());
+        count += 1;
+    }
+    try std.testing.expectEqual(root.getNamedChildCount(), count);
+}
+
+test "query cursor match iterator" {
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    defer zig.deinit();
+
+    try p.setLanguage(zig);
+
+    const tree = try p.parseString(null, "fn foo() void {}\nfn bar() void {}");
+    defer tree.deinit();
+
+    var query = try Query.init(zig, "(function_declaration name: (identifier) @fn_name)");
+    defer query.deinit();
+
+    var cursor = try QueryCursor.init();
+    defer cursor.deinit();
+
+    var iter = cursor.matches(query, tree.rootNode());
+    var count: u32 = 0;
+    while (iter.next()) |match| {
+        try std.testing.expect(match.capture_count > 0);
+        count += 1;
+    }
+    try std.testing.expectEqual(@as(u32, 2), count);
+}
+
+test "query match captureSlice" {
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    defer zig.deinit();
+
+    try p.setLanguage(zig);
+
+    const tree = try p.parseString(null, "const x = 1;");
+    defer tree.deinit();
+
+    var query = try Query.init(zig, "(variable_declaration) @decl");
+    defer query.deinit();
+
+    var cursor = try QueryCursor.init();
+    defer cursor.deinit();
+    cursor.exec(query, tree.rootNode());
+
+    var match: zts.QueryMatch = undefined;
+    try std.testing.expect(cursor.nextMatch(&match));
+
+    const captures = match.captureSlice();
+    try std.testing.expectEqual(@as(usize, 1), captures.len);
+    try std.testing.expectEqualStrings("variable_declaration", captures[0].node.getType());
+}
+
+test "comptime grammar loading" {
+    const zig_lang = zts.loadLanguageComptime(.zig);
+    try std.testing.expect(zig_lang.getSymbolCount() > 0);
+}
+
+test "RangeSlice deinit" {
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    try p.setLanguage(zig);
+
+    const tree = try p.parseString(null, "const x = 1;");
+    defer tree.deinit();
+
+    const ranges = tree.getIncludedRanges();
+    defer ranges.deinit();
+    try std.testing.expect(ranges.slice().len > 0);
 }
