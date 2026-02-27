@@ -43,11 +43,18 @@ jobs:
           tar czf ../dist/tree-sitter-sql-0.3.11.tar.gz tree-sitter-sql-0.3.11
           mv tree-sitter-sql-0.3.11 sql
 
+      - name: Generate checksums
+        run: |
+          cd dist
+          for file in *.tar.gz; do
+            sha256sum "$file" > "${file}.sha256"
+          done
+
       - name: Upload to grammar-assets release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload grammar-assets dist/*.tar.gz --clobber
+          gh release upload grammar-assets dist/*.tar.gz dist/*.sha256 --clobber
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
