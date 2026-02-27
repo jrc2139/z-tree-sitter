@@ -346,7 +346,7 @@ const grammars = [_]Grammar{
     .{ .name = "ruby" },
     .{ .name = "rust" },
     .{ .name = "scala" },
-    .{ .name = "sql" },
+    .{ .name = "sql", .generate = true },
     .{ .name = "swift", .generate = true },
     .{ .name = "toml" },
     .{ .name = "typescript", .root = "typescript/src" },
