@@ -11,6 +11,7 @@ permissions:
 
 env:
   ZIG_VERSION: "0.15.2"
+  TREE_SITTER_VERSION: "0.26.6"
 
 jobs:
   test:
@@ -29,6 +30,14 @@ jobs:
         uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install tree-sitter CLI
+        run: npm install -g tree-sitter-cli@${{ env.TREE_SITTER_VERSION }}
 
       - name: Format check
         run: zig fmt --check src/ examples/ tests/
