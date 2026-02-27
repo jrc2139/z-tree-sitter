@@ -18,6 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
       - name: Install tree-sitter CLI
         run: npm install -g tree-sitter-cli@${{ env.TREE_SITTER_VERSION }}
 
