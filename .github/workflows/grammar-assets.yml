@@ -26,9 +26,17 @@ jobs:
       - name: Install tree-sitter CLI
         run: npm install -g tree-sitter-cli@${{ env.TREE_SITTER_VERSION }}
 
-      - name: Vendor and generate grammars
+      - name: Download and generate grammars
         run: |
-          bash scripts/vendor.sh
+          mkdir -p grammars/swift grammars/sql
+
+          echo "Downloading swift..."
+          curl -fsSL https://github.com/alex-pinkus/tree-sitter-swift/archive/refs/tags/0.7.1.tar.gz \
+            | tar xz --strip-components=1 -C grammars/swift
+
+          echo "Downloading sql..."
+          curl -fsSL https://github.com/DerekStride/tree-sitter-sql/archive/refs/tags/v0.3.11.tar.gz \
+            | tar xz --strip-components=1 -C grammars/sql
 
           for dir in grammars/swift grammars/sql; do
             echo "Generating $(basename $dir)..."
@@ -42,11 +50,9 @@ jobs:
 
           mv swift tree-sitter-swift-0.7.1
           tar czf ../dist/tree-sitter-swift-0.7.1.tar.gz tree-sitter-swift-0.7.1
-          mv tree-sitter-swift-0.7.1 swift
 
           mv sql tree-sitter-sql-0.3.11
           tar czf ../dist/tree-sitter-sql-0.3.11.tar.gz tree-sitter-sql-0.3.11
-          mv tree-sitter-sql-0.3.11 sql
 
       - name: Generate checksums
         run: |
@@ -59,6 +65,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh release create grammar-assets --title "Grammar Assets" \
+            --notes "Pre-generated grammar tarballs for grammars missing parser.c upstream." \
+            2>/dev/null || true
           gh release upload grammar-assets dist/*.tar.gz dist/*.sha256 --clobber
 
       - name: Attest build provenance
