@@ -159,12 +159,16 @@ fn buildLanguageGrammar(
 ) !*Step.Compile {
     const source_root = b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
 
+    // Grammar scanner/parser C code is auto-generated and may contain undefined
+    // behavior that manifests under optimization (SIGSEGV/SIGILL in ReleaseSafe).
+    // Compile grammar C code unoptimized for correctness; the performance impact
+    // is negligible since parsing is fast relative to embedding.
     const lib = b.addLibrary(.{
         .name = g.name,
         .linkage = .static,
         .root_module = b.createModule(.{
             .target = target,
-            .optimize = optimize,
+            .optimize = .Debug,
         }),
     });
 
