@@ -159,16 +159,17 @@ fn buildLanguageGrammar(
 ) !*Step.Compile {
     const source_root = b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
 
-    // Grammar scanner/parser C code is auto-generated and may contain undefined
-    // behavior that triggers SIGILL under ReleaseSafe (UB sanitizer traps).
-    // Debug and ReleaseFast both work fine. Use ReleaseFast for grammar C code
-    // to keep optimization while avoiding sanitizer traps on third-party code.
+    // Auto-generated grammar C code may have UB that triggers SIGILL under
+    // ReleaseSafe (UB sanitizer traps). Bump ReleaseSafe to ReleaseFast to
+    // keep optimization without sanitizer traps. All other modes pass through.
+    const grammar_optimize: std.builtin.OptimizeMode = if (optimize == .ReleaseSafe) .ReleaseFast else optimize;
+
     const lib = b.addLibrary(.{
         .name = g.name,
         .linkage = .static,
         .root_module = b.createModule(.{
             .target = target,
-            .optimize = .ReleaseFast,
+            .optimize = grammar_optimize,
         }),
     });
 
