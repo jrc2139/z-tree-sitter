@@ -46,7 +46,7 @@ pub fn build(b: *Build) !void {
         ) orelse all_opt or grammar_map.contains(g.name);
 
         if (grammar_opt) {
-            const grammar_build = try buildLanguageGrammar(b, target, optimize, g);
+            const grammar_build = buildLanguageGrammar(b, target, optimize, g);
             b.installArtifact(grammar_build);
             zts.linkLibrary(grammar_build);
         }
@@ -156,7 +156,7 @@ fn buildLanguageGrammar(
     target: Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     g: Grammar,
-) !*Step.Compile {
+) *Step.Compile {
     const source_root = b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
 
     // Auto-generated grammar C code may have UB that triggers SIGILL under
@@ -182,26 +182,19 @@ fn buildLanguageGrammar(
     lib.addIncludePath(source_root.path(b, g.root));
     lib.linkLibC();
 
-    const header_path = try generateHeaderFile(b, g, source_root);
-    lib.installHeader(source_root.path(b, header_path), header_path);
+    const header = generateHeaderFile(b, g);
+    lib.installHeader(header, b.fmt("{s}.h", .{g.name}));
 
     return lib;
 }
 
-fn generateHeaderFile(b: *Build, g: Grammar, source_root: std.Build.LazyPath) ![]const u8 {
-    const path = source_root.getPath(b);
-    var dir = try std.fs.cwd().openDir(path, .{});
-    defer dir.close();
-
-    const file_name = try std.fmt.allocPrint(b.allocator, "{s}.h", .{g.name});
+fn generateHeaderFile(b: *Build, g: Grammar) std.Build.LazyPath {
+    const file_name = b.fmt("{s}.h", .{g.name});
 
     var buf: [32]u8 = undefined;
     const upper_name = std.ascii.upperString(&buf, file_name);
 
-    const f = try dir.createFile(file_name, .{});
-    defer f.close();
-
-    const header = try std.fmt.allocPrint(b.allocator,
+    const header = b.fmt(
         \\#ifndef TREE_SITTER_{s}_H_
         \\#define TREE_SITTER_{s}_H_
         \\typedef struct TSLanguage TSLanguage;
@@ -214,10 +207,11 @@ fn generateHeaderFile(b: *Build, g: Grammar, source_root: std.Build.LazyPath) ![
         \\}}
         \\#endif
         \\#endif
+        \\
     , .{ upper_name, upper_name, g.name });
 
-    try f.writeAll(header);
-    return file_name;
+    const wf = b.addWriteFiles();
+    return wf.add(file_name, header);
 }
 
 pub fn shouldInstallAllGrammar() bool {
