@@ -159,10 +159,15 @@ fn buildLanguageGrammar(
 ) *Step.Compile {
     const source_root = b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
 
-    // Auto-generated grammar C code may have UB that triggers SIGILL under
-    // ReleaseSafe (UB sanitizer traps). Bump ReleaseSafe to ReleaseFast to
-    // keep optimization without sanitizer traps. All other modes pass through.
-    const grammar_optimize: std.builtin.OptimizeMode = if (optimize == .ReleaseSafe) .ReleaseFast else optimize;
+    // Auto-generated grammar C code may have UB that triggers panics under
+    // Debug and ReleaseSafe (UB sanitizer traps). Tree-sitter external scanners
+    // legitimately pass NULL to deserialize(payload, NULL, 0) for "no prior state",
+    // which Zig's C compiler treats as UB. Use ReleaseFast for grammar C code
+    // to disable sanitizer traps in all build modes.
+    const grammar_optimize: std.builtin.OptimizeMode = switch (optimize) {
+        .Debug, .ReleaseSafe => .ReleaseFast,
+        else => optimize,
+    };
 
     const lib = b.addLibrary(.{
         .name = g.name,
