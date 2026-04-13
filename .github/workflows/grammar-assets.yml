@@ -9,7 +9,7 @@ permissions:
   attestations: write
 
 env:
-  TREE_SITTER_VERSION: "0.26.6"
+  TREE_SITTER_VERSION: "0.26.8"
 
 jobs:
   generate:

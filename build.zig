@@ -7,7 +7,7 @@ const eql = std.mem.eql;
 
 /// Minimum tree-sitter CLI version for grammar generation.
 /// Must match tree_sitter_api version in build.zig.zon.
-const tree_sitter_version = "0.26.6";
+const tree_sitter_version = "0.26.8";
 
 const Grammar = struct {
     name: []const u8,
@@ -316,7 +316,7 @@ const grammars = [_]Grammar{
     .{ .name = "dockerfile" },
     .{ .name = "elixir" },
     .{ .name = "elm" },
-    .{ .name = "erlang", .scanner = false },
+    .{ .name = "erlang" },
     .{ .name = "fsharp", .root = "fsharp/src" },
     .{ .name = "go", .scanner = false },
     .{ .name = "graphql", .scanner = false },

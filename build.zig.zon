@@ -6,8 +6,8 @@
 
     .dependencies = .{
         .tree_sitter_api = .{
-            .url = "git+https://github.com/tree-sitter/tree-sitter#v0.26.6",
-            .hash = "tree_sitter-0.26.6-Tw2sR9-2CwCNIR7jyRSbsSPdEwPPAUD4aUaKLM-UHOnd",
+            .url = "git+https://github.com/tree-sitter/tree-sitter#v0.26.8",
+            .hash = "tree_sitter-0.26.8-Tw2sR5G8CwBXz-azPqB8yigELAr2sj0SmNtoiK6-CP0B",
         },
 
         .bash = .{
@@ -36,8 +36,8 @@
         },
 
         .elixir = .{
-            .url = "https://github.com/elixir-lang/tree-sitter-elixir/archive/refs/tags/v0.3.4.tar.gz",
-            .hash = "N-V-__8AAMc9zACnlNlsA6OYzJTNeUb5z3WdNue763diJ0gP",
+            .url = "https://github.com/elixir-lang/tree-sitter-elixir/archive/refs/tags/v0.3.5.tar.gz",
+            .hash = "N-V-__8AANw_zAD-C4vTbwxYb4ByK7azMVTzHbu8gTrzfCn5",
         },
 
         .elm = .{
@@ -46,13 +46,13 @@
         },
 
         .erlang = .{
-            .url = "https://github.com/WhatsApp/tree-sitter-erlang/archive/refs/tags/0.1.0.tar.gz",
-            .hash = "1220ca214a2c50bc15320c5a77e43af928af6265814e3c7719d456a69f985c85a99b",
+            .url = "https://github.com/WhatsApp/tree-sitter-erlang/archive/refs/tags/0.15.tar.gz",
+            .hash = "N-V-__8AAEiSJgCtmxvRBwFkG-RsxrvS4UR0ykY3Z7-Bf4CO",
         },
 
         .fsharp = .{
-            .url = "https://github.com/ionide/tree-sitter-fsharp/archive/refs/tags/v0.1.0.tar.gz",
-            .hash = "12207b971342ba2384348efccb3a123b387bab9ccdeb33a49737dce2c81b102e2a72",
+            .url = "https://github.com/ionide/tree-sitter-fsharp/archive/refs/tags/0.2.2.tar.gz",
+            .hash = "N-V-__8AANIBGQM88BQoo-OR794wGDm6POIHfmOp6IWn3zZ6",
         },
 
         .go = .{
@@ -131,13 +131,13 @@
         },
 
         .rust = .{
-            .url = "https://github.com/tree-sitter/tree-sitter-rust/archive/refs/tags/v0.24.0.tar.gz",
-            .hash = "N-V-__8AAItxbQDcrvshXYdPUV9STG6PaJyk2DZb-uBzQjlw",
+            .url = "https://github.com/tree-sitter/tree-sitter-rust/archive/refs/tags/v0.24.2.tar.gz",
+            .hash = "N-V-__8AAHJYbgAipcanYj2A6rnj9wtGzjGzANkrOsqiFAxm",
         },
 
         .scala = .{
-            .url = "https://github.com/tree-sitter/tree-sitter-scala/archive/refs/tags/v0.24.0.tar.gz",
-            .hash = "N-V-__8AAHO4oQFIflTcVKxH2r8DteWPqJrPd0yy8DTb6yxV",
+            .url = "https://github.com/tree-sitter/tree-sitter-scala/archive/refs/tags/v0.25.0.tar.gz",
+            .hash = "N-V-__8AABYKvwH2Y8Srif0NDbzF-w2o2kUEs8kjncKbVWzR",
         },
 
         .toml = .{
@@ -156,8 +156,8 @@
         },
 
         .dart = .{
-            .url = "git+https://github.com/UserNobody14/tree-sitter-dart#d4d8f3e337d8be23be27ffc35a0aef972343cd54",
-            .hash = "1220ff91ca73ef510e49c8ede7fa0df4239f987444f4edbadde8cd29e71c993a92c5",
+            .url = "git+https://github.com/UserNobody14/tree-sitter-dart#0fc19c3a57b1109802af41d2b8f60d8835c5da3a",
+            .hash = "N-V-__8AAPQpgAAOmE-NlG_JbDSOzs8PqmRecCYIAca4CeR2",
         },
 
         .dockerfile = .{
