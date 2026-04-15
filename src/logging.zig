@@ -17,7 +17,7 @@ const std = @import("std");
 /// Warn/err always print regardless of this flag.
 pub var debug_enabled: bool = false;
 
-fn ScopedLog(comptime scope: @Type(.enum_literal)) type {
+fn ScopedLog(comptime scope: @EnumLiteral()) type {
     return struct {
         const std_log = std.log.scoped(scope);
 

@@ -4,3 +4,6 @@ zig-out/
 files.zig
 grammars/
 *.orig/
+.claude/
+CLAUDE.md
+.sema/
