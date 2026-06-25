@@ -9,7 +9,7 @@ permissions:
   attestations: write
 
 env:
-  TREE_SITTER_VERSION: "0.26.8"
+  TREE_SITTER_VERSION: "0.26.9"
 
 jobs:
   generate:
@@ -31,7 +31,7 @@ jobs:
           mkdir -p grammars/swift grammars/sql
 
           echo "Downloading swift..."
-          curl -fsSL https://github.com/alex-pinkus/tree-sitter-swift/archive/refs/tags/0.7.1.tar.gz \
+          curl -fsSL https://github.com/alex-pinkus/tree-sitter-swift/archive/refs/tags/0.7.3.tar.gz \
             | tar xz --strip-components=1 -C grammars/swift
 
           echo "Downloading sql..."
@@ -48,8 +48,8 @@ jobs:
           mkdir -p dist
           cd grammars
 
-          mv swift tree-sitter-swift-0.7.1
-          tar czf ../dist/tree-sitter-swift-0.7.1.tar.gz tree-sitter-swift-0.7.1
+          mv swift tree-sitter-swift-0.7.3
+          tar czf ../dist/tree-sitter-swift-0.7.3.tar.gz tree-sitter-swift-0.7.3
 
           mv sql tree-sitter-sql-0.3.11
           tar czf ../dist/tree-sitter-sql-0.3.11.tar.gz tree-sitter-sql-0.3.11
