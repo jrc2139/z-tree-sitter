@@ -186,8 +186,8 @@
         },
 
         .swift = .{
-            .url = "https://github.com/jrc2139/z-tree-sitter/releases/download/grammar-assets/tree-sitter-swift-0.7.1.tar.gz",
-            .hash = "N-V-__8AAArpKwGmiEiswOS3y-WpMnOtkF8AKXw2kZA8hr5e",
+            .url = "https://github.com/jrc2139/z-tree-sitter/releases/download/grammar-assets/tree-sitter-swift-0.7.3.tar.gz",
+            .hash = "N-V-__8AANZ-UQEQ9oQgd3GJvc1uTqJDOEGHitpHOWJQAO0z",
         },
 
         .yaml = .{
