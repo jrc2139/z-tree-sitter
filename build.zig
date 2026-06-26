@@ -56,19 +56,18 @@ pub fn build(b: *Build) !void {
     }
     zts.addOptions("config", config);
 
-    // Get tree-sitter core library from the dependency
-    const ts_dep = b.dependency("tree_sitter_api", .{
-        .target = target,
-        .optimize = optimize,
-        .amalgamated = true,
-        .@"build-shared" = false,
-    });
-    const c_tree_sitter = ts_dep.artifact("tree-sitter");
+    // Build tree-sitter core from vendored amalgamated source. Upstream's
+    // bundled build.zig targets the old Step.Compile C-source API and does not
+    // compile under Zig 0.16, so we vendor lib/include + lib/src (no build.zig)
+    // and compile lib/src/lib.c directly -- the same approach used for grammars.
+    // Re-vendor on bump: copy lib/include and lib/src from the tree-sitter
+    // release into vendor/tree-sitter/lib/.
+    const c_tree_sitter = buildTreeSitterCore(b, target, optimize);
     b.installArtifact(c_tree_sitter);
     zts.linkLibrary(c_tree_sitter);
 
     // Add include path for tree_sitter/api.h
-    zts.addIncludePath(ts_dep.path("lib/include"));
+    zts.addIncludePath(b.path("vendor/tree-sitter/lib/include"));
 
     // Tests
     {
@@ -151,6 +150,41 @@ pub fn build(b: *Build) !void {
     }
 }
 
+/// Build the tree-sitter core runtime from vendored amalgamated source.
+/// Vendored from tree-sitter v0.26.9 (lib/include + lib/src only); upstream's
+/// build.zig is Zig-0.15-only. Flags and feature-test macros mirror that
+/// build.zig's amalgamated path.
+fn buildTreeSitterCore(
+    b: *Build,
+    target: Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *Step.Compile {
+    const lib = b.addLibrary(.{
+        .name = "tree-sitter",
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
+    });
+
+    const root = b.path("vendor/tree-sitter/lib");
+    lib.root_module.addCSourceFile(.{
+        .file = root.path(b, "src/lib.c"),
+        .flags = &.{"-std=c11"},
+    });
+    lib.root_module.addIncludePath(root.path(b, "include"));
+    lib.root_module.addIncludePath(root.path(b, "src"));
+
+    lib.root_module.addCMacro("_POSIX_C_SOURCE", "200112L");
+    lib.root_module.addCMacro("_DEFAULT_SOURCE", "");
+    lib.root_module.addCMacro("_BSD_SOURCE", "");
+    lib.root_module.addCMacro("_DARWIN_C_SOURCE", "");
+
+    return lib;
+}
+
 fn buildLanguageGrammar(
     b: *Build,
     target: Build.ResolvedTarget,
@@ -191,8 +225,11 @@ fn buildLanguageGrammar(
 fn generateHeaderFile(b: *Build, g: Grammar) std.Build.LazyPath {
     const file_name = b.fmt("{s}.h", .{g.name});
 
+    // Build the include guard from the grammar name, not the filename, so it
+    // stays a valid macro identifier (TREE_SITTER_BASH_H_, not
+    // TREE_SITTER_BASH.H_H_ -- the dot is rejected by Zig 0.16's translate-c).
     var buf: [32]u8 = undefined;
-    const upper_name = std.ascii.upperString(&buf, file_name);
+    const upper_name = std.ascii.upperString(&buf, g.name);
 
     const header = b.fmt(
         \\#ifndef TREE_SITTER_{s}_H_

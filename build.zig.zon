@@ -241,5 +241,6 @@
         "build.zig.zon",
         "src",
         "grammars",
+        "vendor",
     },
 }
