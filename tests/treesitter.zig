@@ -411,8 +411,8 @@ test "tree printDotGraph" {
     defer tree.deinit();
 
     // Open /dev/null for a valid writable fd
-    const devnull = std.posix.open("/dev/null", .{ .ACCMODE = .WRONLY }, 0) catch return;
-    defer std.posix.close(devnull);
+    const devnull = std.posix.openat(std.posix.AT.FDCWD, "/dev/null", .{ .ACCMODE = .WRONLY }, 0) catch return;
+    defer _ = std.c.close(devnull);
     tree.printDotGraph(@intCast(devnull));
 }
 
