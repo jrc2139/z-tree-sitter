@@ -631,6 +631,47 @@ test "C-interop ABI widths match tree-sitter" {
     try std.testing.expectEqual(@sizeOf(c_uint), @sizeOf(zts.QueryPredicateStepType));
 }
 
+test "parseTimeout aborts a looping parse on a tiny budget" {
+    const p = try Parser.init();
+    defer p.deinit();
+    try p.setLanguage(try loadLanguage(.zig));
+
+    // An input that never signals EOF: parsing can only stop via the progress
+    // callback, so a zero budget must abort it. Use token-rich content (not one
+    // unbounded identifier) so the parse loop -- where the callback fires -- runs.
+    const Infinite = struct {
+        var buf = ("const x = 0;\n".*) ** 8;
+        fn read(_: *anyopaque, _: u32, _: Point, bytes_read: *u32) callconv(.c) [*]const u8 {
+            bytes_read.* = buf.len;
+            return &buf;
+        }
+    };
+    const input = zts.Input{
+        .payload = &Infinite.buf,
+        .read = &Infinite.read,
+        .encoding = .utf8,
+    };
+    try std.testing.expectError(error.ParseTimeout, p.parseTimeout(null, input, 0));
+}
+
+test "parseStringTimeout returns a tree within budget" {
+    const p = try Parser.init();
+    defer p.deinit();
+    try p.setLanguage(try loadLanguage(.zig));
+
+    const tree = try p.parseStringTimeout(null, "const x = 1;", std.time.ns_per_s);
+    defer tree.deinit();
+    try std.testing.expectEqualStrings("source_file", tree.rootNode().getType());
+}
+
+test "parseStringTimeout without a language surfaces ParseFail, not ParseTimeout" {
+    const p = try Parser.init();
+    defer p.deinit();
+    // No setLanguage: the null result is a parse failure, not a timeout, even
+    // though the timeout machinery is installed.
+    try std.testing.expectError(error.ParseFail, p.parseStringTimeout(null, "x", std.time.ns_per_s));
+}
+
 test "editPoint" {
     // Insert 3 bytes at column 5
     const edit = zts.InputEdit{

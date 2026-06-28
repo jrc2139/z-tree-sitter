@@ -158,6 +158,71 @@ pub const Parser = opaque {
         } else return error.ParseFail;
     }
 
+    /// Progress-callback payload that cancels a parse once a nanosecond budget
+    /// elapses. tree-sitter 0.26.9 removed ts_parser_set_timeout_micros and
+    /// set_cancellation_flag; the progress callback (return true to cancel) is
+    /// the only remaining mechanism.
+    const TimeoutState = struct {
+        timer: std.time.Timer,
+        budget_ns: u64,
+        tripped: bool = false,
+
+        fn exceeded(state: *ParseState) callconv(.c) bool {
+            const self: *TimeoutState = @ptrCast(@alignCast(state.payload.?));
+            if (self.timer.read() < self.budget_ns) return false;
+            self.tripped = true;
+            return true;
+        }
+    };
+
+    /// Presents a whole []const u8 as a streaming Input, since there is no
+    /// ts_parser_parse_string_with_options to bound a string parse directly.
+    const StringReader = struct {
+        bytes: []const u8,
+
+        fn read(payload: *anyopaque, byte_index: u32, _: Point, bytes_read: *u32) callconv(.c) [*]const u8 {
+            const self: *StringReader = @ptrCast(@alignCast(payload));
+            if (byte_index >= self.bytes.len) {
+                bytes_read.* = 0;
+                return self.bytes.ptr;
+            }
+            bytes_read.* = @intCast(self.bytes.len - byte_index);
+            return self.bytes.ptr + byte_index;
+        }
+    };
+
+    /// Parse streaming `input`, cancelling with error.ParseTimeout if parsing
+    /// exceeds `budget_ns` nanoseconds (a `budget_ns` of 0 cancels at the first
+    /// progress checkpoint). Any other null result (e.g. no language set) is
+    /// reported as error.ParseFail. Note: 0.26.x reduced but did not eliminate
+    /// worst-case parse cost, so bounding adversarial input is still useful.
+    pub fn parseTimeout(self: *Self, old_tree: ?*const Tree, input: Input, budget_ns: u64) !*Tree {
+        var state = TimeoutState{
+            .timer = std.time.Timer.start() catch return error.TimerUnsupported,
+            .budget_ns = budget_ns,
+        };
+        const options = ParseOptions{
+            .payload = &state,
+            .progress_callback = &TimeoutState.exceeded,
+        };
+        if (tree_sitter.ts_parser_parse_with_options(@ptrCast(self), @ptrCast(old_tree), @bitCast(input), @bitCast(options))) |tree| {
+            return @ptrCast(tree);
+        }
+        return if (state.tripped) error.ParseTimeout else error.ParseFail;
+    }
+
+    /// Like parseString but bounded to `budget_ns` nanoseconds; returns
+    /// error.ParseTimeout if exceeded. See parseTimeout.
+    pub fn parseStringTimeout(self: *Self, old_tree: ?*const Tree, string: []const u8, budget_ns: u64) !*Tree {
+        var reader = StringReader{ .bytes = string };
+        const input = Input{
+            .payload = &reader,
+            .read = &StringReader.read,
+            .encoding = .utf8,
+        };
+        return self.parseTimeout(old_tree, input, budget_ns);
+    }
+
     pub fn reset(self: *Self) void {
         tree_sitter.ts_parser_reset(@ptrCast(self));
     }
