@@ -1,3 +1,34 @@
+//! Zig wrapper around the tree-sitter C API. The tree-sitter API header and the
+//! tests/ directory document the full surface; the notes below cover the usage
+//! and lifetime rules that are easy to get wrong.
+//!
+//! Returned-slice lifetimes:
+//! - Most `[]const u8` returns are BORROWED and stay valid only while the object
+//!   that produced them is alive. Node/grammar type names and symbol/field names
+//!   point into the Language (a Tree keeps its Language alive, so they are valid
+//!   for the Tree's lifetime too); query capture and string names point into the
+//!   Query. dupe them (e.g. `allocator.dupe`) to outlive that owner.
+//! - The exceptions are owned and must be released: `Node.toString()` returns a
+//!   NodeString (call `deinit()`), and `Tree.getIncludedRanges`/`getChangedRanges`
+//!   return a RangeSlice (call `deinit()`).
+//!
+//! Reuse for performance: Parser, QueryCursor and TreeCursor hold internal
+//! buffers/pools that grow on use and are cleared (not freed) when reused. Prefer
+//! reusing one instance across many inputs -- parse again on the same Parser,
+//! re-`exec` the same QueryCursor, `TreeCursor.reset` to a new node -- over
+//! init/deinit per input, so those buffers are amortized. (`Parser.reset` is for
+//! restarting after a cancelled parse, not for reuse.)
+//!
+//! Hot paths: compare `Node.getSymbol()` (a small integer) against ids resolved
+//! once via `Language.getSymbolForName()` instead of string-comparing
+//! `Node.getType()`; this is materially cheaper when visiting many nodes.
+//!
+//! Global allocator: `setAllocator` installs PROCESS-GLOBAL allocator hooks. Call
+//! it once at startup before creating any parser or tree, and do not change it
+//! while tree-sitter objects are alive: memory is released through whichever hook
+//! is current at free time, so allocating under one allocator and freeing under
+//! another corrupts the heap.
+
 const std = @import("std");
 const c = @import("c.zig");
 const tree_sitter = c.tree_sitter;
@@ -659,6 +690,8 @@ pub const Node = extern struct {
         return @bitCast(tree_sitter.ts_node_end_point(@bitCast(self)));
     }
 
+    /// Returns an OWNED s-expression of the subtree; call `NodeString.deinit()`
+    /// when done (unlike the borrowed `[]const u8` returned by getType/etc.).
     pub fn toString(self: Self) NodeString {
         return .{ .ptr = tree_sitter.ts_node_string(@bitCast(self)) };
     }
@@ -1031,6 +1064,9 @@ pub const LanguageMetadata = extern struct {
     patch_version: u8,
 };
 
+/// Installs PROCESS-GLOBAL allocator hooks for all tree-sitter allocations.
+/// Call once at startup before creating any parser or tree, and do not change it
+/// while tree-sitter objects are alive (see the module-level docs).
 pub fn setAllocator(
     new_malloc: ?*const fn (usize) callconv(.c) ?*anyopaque,
     new_calloc: ?*const fn (usize, usize) callconv(.c) ?*anyopaque,
