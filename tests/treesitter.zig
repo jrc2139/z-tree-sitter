@@ -165,16 +165,16 @@ test "node" {
     _ = node.getDescendantCount();
     _ = node.getDescendantForByteRange(0, text.len);
 
-    var edit_input = [_]zts.InputEdit{.{
+    var edit_input = zts.InputEdit{
         .start_byte = 6,
         .old_end_byte = 9,
         .new_end_byte = 10,
         .start_point = Point{ .row = 0, .column = 6 },
         .old_end_point = Point{ .row = 0, .column = 9 },
         .new_end_point = Point{ .row = 0, .column = 10 },
-    }};
-    var nodes = [_]zts.Node{node};
-    zts.editNodes(&nodes, &edit_input);
+    };
+    var edited = node;
+    zts.editNode(&edited, &edit_input);
 
     _ = node.eq(node);
 }
@@ -621,6 +621,14 @@ test "RangeSlice/NodeString deinit free through the installed allocator" {
         try std.testing.expectEqual(frees_before + 1, TrackingAlloc.free_calls);
         try std.testing.expectEqual(live_before, TrackingAlloc.live);
     }
+}
+
+test "C-interop ABI widths match tree-sitter" {
+    // TSLogType and TSQueryPredicateStepType are 4-byte C enums. Narrowing them
+    // to u8 passes the wrong arg width when C invokes a Zig logger and only reads
+    // the predicate-step type correctly on little-endian (see zts-gyq.2).
+    try std.testing.expectEqual(@sizeOf(c_uint), @sizeOf(zts.LogType));
+    try std.testing.expectEqual(@sizeOf(c_uint), @sizeOf(zts.QueryPredicateStepType));
 }
 
 test "editPoint" {

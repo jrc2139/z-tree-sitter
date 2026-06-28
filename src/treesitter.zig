@@ -476,7 +476,7 @@ pub const Input = extern struct {
     decode: ?DecodeFunction = null,
 };
 
-pub const LogType = enum(u8) {
+pub const LogType = enum(c_uint) {
     parse,
     lex,
 };
@@ -711,8 +711,8 @@ pub const Node = extern struct {
     }
 };
 
-pub fn editNodes(nodes: [*]Node, edit_input: [*]const InputEdit) void {
-    tree_sitter.ts_node_edit(@ptrCast(nodes), @ptrCast(edit_input));
+pub fn editNode(node: *Node, edit: *const InputEdit) void {
+    tree_sitter.ts_node_edit(@ptrCast(node), @ptrCast(edit));
 }
 
 pub fn editPoint(point: *Point, point_byte: *u32, input_edit: *const InputEdit) void {
@@ -829,7 +829,7 @@ pub const QueryMatch = extern struct {
     }
 };
 
-pub const QueryPredicateStepType = enum(u8) {
+pub const QueryPredicateStepType = enum(c_uint) {
     done,
     capture,
     string,
