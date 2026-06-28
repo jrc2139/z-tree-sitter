@@ -672,6 +672,28 @@ test "parseStringTimeout without a language surfaces ParseFail, not ParseTimeout
     try std.testing.expectError(error.ParseFail, p.parseStringTimeout(null, "x", std.time.ns_per_s));
 }
 
+test "markdown external scanner parses without a UBSan trap" {
+    // The markdown scanner uses the legit deserialize(payload, NULL, 0) idiom,
+    // which trips a UBSan false positive. Parsing it must not trap under
+    // Debug/ReleaseSafe. Skips when markdown is not built (e.g. --language zig).
+    const lang = zts.loadLanguage(.markdown) catch return;
+    defer lang.deinit();
+
+    const p = try Parser.init();
+    defer p.deinit();
+    try p.setLanguage(lang);
+
+    const tree = try p.parseString(null,
+        \\# Title
+        \\
+        \\- a
+        \\- b
+        \\
+    );
+    defer tree.deinit();
+    try std.testing.expect(!tree.rootNode().isNull());
+}
+
 test "parseStringStrict accepts clean input and rejects broken input without leaking" {
     // Route tree-sitter allocations through the tracking allocator so the
     // rejected tree's cleanup is verifiable: after everything is freed, the

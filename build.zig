@@ -159,30 +159,25 @@ fn buildLanguageGrammar(
 ) *Step.Compile {
     const source_root = b.dependency(g.name, .{ .target = target, .optimize = optimize }).path("");
 
-    // Auto-generated grammar C code may have UB that triggers panics under
-    // Debug and ReleaseSafe (UB sanitizer traps). Tree-sitter external scanners
-    // legitimately pass NULL to deserialize(payload, NULL, 0) for "no prior state",
-    // which Zig's C compiler treats as UB. Use ReleaseFast for grammar C code
-    // to disable sanitizer traps in all build modes.
-    const grammar_optimize: std.builtin.OptimizeMode = switch (optimize) {
-        .Debug, .ReleaseSafe => .ReleaseFast,
-        else => optimize,
-    };
-
     const lib = b.addLibrary(.{
         .name = g.name,
         .linkage = .static,
         .root_module = b.createModule(.{
             .target = target,
-            .optimize = grammar_optimize,
+            .optimize = optimize,
         }),
     });
 
+    // Tree-sitter external scanners legitimately pass NULL to
+    // deserialize(payload, NULL, 0) for "no prior state", which Zig's C compiler
+    // flags as UB and traps on under Debug/ReleaseSafe. Disable only the
+    // undefined-behavior sanitizer for grammar C, keeping the selected optimize
+    // mode (and any other checks) intact rather than forcing ReleaseFast.
     const default_files = &.{ "parser.c", "scanner.c" };
     lib.addCSourceFiles(.{
         .root = source_root.path(b, g.root),
         .files = if (g.scanner) default_files else &.{"parser.c"},
-        .flags = &.{"-std=c11"},
+        .flags = &.{ "-std=c11", "-fno-sanitize=undefined" },
     });
     lib.addIncludePath(source_root.path(b, g.root));
     lib.linkLibC();
