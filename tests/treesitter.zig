@@ -672,6 +672,38 @@ test "parseStringTimeout without a language surfaces ParseFail, not ParseTimeout
     try std.testing.expectError(error.ParseFail, p.parseStringTimeout(null, "x", std.time.ns_per_s));
 }
 
+test "parseStringStrict accepts clean input and rejects broken input without leaking" {
+    // Route tree-sitter allocations through the tracking allocator so the
+    // rejected tree's cleanup is verifiable: after everything is freed, the
+    // net live-allocation count must return to zero.
+    TrackingAlloc.reset();
+    zts.setAllocator(
+        TrackingAlloc.malloc,
+        TrackingAlloc.calloc,
+        TrackingAlloc.realloc,
+        TrackingAlloc.free,
+    );
+    defer zts.setAllocator(null, null, null, null);
+
+    {
+        const p = try Parser.init();
+        defer p.deinit();
+        try p.setLanguage(try loadLanguage(.zig));
+
+        // Clean input parses strictly and yields an error-free tree.
+        const ok = try p.parseStringStrict(null, "const x = 1;");
+        try std.testing.expect(!ok.rootNode().hasError());
+        ok.deinit();
+
+        // Broken input is rejected (the tolerant parseString would accept it).
+        try std.testing.expectError(
+            error.SyntaxTreeHasErrors,
+            p.parseStringStrict(null, "}{ ++ )( const = ;"),
+        );
+    }
+    try std.testing.expectEqual(@as(isize, 0), TrackingAlloc.live);
+}
+
 test "matches applies a default match limit but respects an explicit one" {
     const p = try Parser.init();
     defer p.deinit();

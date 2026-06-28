@@ -152,6 +152,19 @@ pub const Parser = opaque {
         } else return error.EncodingParseFail;
     }
 
+    /// Like parseString but rejects syntactically broken input: returns
+    /// error.SyntaxTreeHasErrors (after freeing the tree) when the parse
+    /// recovered over ERROR/MISSING nodes. Plain parseString intentionally
+    /// tolerates error recovery and returns the partial tree.
+    pub fn parseStringStrict(self: *Self, old_tree: ?*const Tree, string: []const u8) !*Tree {
+        const tree = try self.parseString(old_tree, string);
+        if (tree.rootNode().hasError()) {
+            tree.deinit();
+            return error.SyntaxTreeHasErrors;
+        }
+        return tree;
+    }
+
     pub fn parseWithOptions(self: *Self, old_tree: ?*const Tree, input: Input, options: ParseOptions) !*Tree {
         if (tree_sitter.ts_parser_parse_with_options(@ptrCast(self), @ptrCast(old_tree), @bitCast(input), @bitCast(options))) |tree| {
             return @ptrCast(tree);
