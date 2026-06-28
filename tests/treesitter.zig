@@ -801,6 +801,26 @@ test "matchesChecked surfaces match-limit overflow" {
     }
 }
 
+test "const-correct Tree reads and getTypeZ" {
+    const p = try Parser.init();
+    defer p.deinit();
+    try p.setLanguage(try loadLanguage(.zig));
+    const tree = try p.parseString(null, "const x = 1;");
+    defer tree.deinit();
+
+    // Read-only methods must be callable through a *const Tree.
+    const ct: *const zts.Tree = tree;
+    const root = ct.rootNode();
+    try std.testing.expect(ct.getLanguage() != null);
+    const ranges = ct.getIncludedRanges();
+    defer ranges.deinit();
+    try std.testing.expect(ranges.slice().len > 0);
+
+    // getTypeZ returns the same text as getType without a length scan.
+    try std.testing.expectEqualStrings(root.getType(), std.mem.span(root.getTypeZ()));
+    try std.testing.expectEqualStrings(root.getGrammarType(), std.mem.span(root.getGrammarTypeZ()));
+}
+
 test "editPoint" {
     // Insert 3 bytes at column 5
     const edit = zts.InputEdit{

@@ -287,7 +287,7 @@ pub const Parser = opaque {
 pub const Tree = opaque {
     const Self = @This();
 
-    pub fn copy(tree: *Self) !*Self {
+    pub fn copy(tree: *const Self) !*Self {
         if (tree_sitter.ts_tree_copy(@ptrCast(tree))) |copied_tree| {
             return @ptrCast(@constCast(copied_tree));
         } else return error.TreeCopyFail;
@@ -297,21 +297,21 @@ pub const Tree = opaque {
         tree_sitter.ts_tree_delete(@ptrCast(tree));
     }
 
-    pub fn rootNode(tree: *Self) Node {
+    pub fn rootNode(tree: *const Self) Node {
         return @bitCast(tree_sitter.ts_tree_root_node(@ptrCast(tree)));
     }
 
-    pub fn rootNodeWithOffset(tree: *Self, offset_bytes: u32, offset_extent: Point) Node {
+    pub fn rootNodeWithOffset(tree: *const Self, offset_bytes: u32, offset_extent: Point) Node {
         return @bitCast(tree_sitter.ts_tree_root_node_with_offset(@ptrCast(tree), offset_bytes, @bitCast(offset_extent)));
     }
 
-    pub fn getLanguage(tree: *Self) ?*const Language {
+    pub fn getLanguage(tree: *const Self) ?*const Language {
         if (tree_sitter.ts_tree_language(@ptrCast(tree))) |lang| {
             return @ptrCast(lang);
         } else return null;
     }
 
-    pub fn getIncludedRanges(tree: *Self) RangeSlice {
+    pub fn getIncludedRanges(tree: *const Self) RangeSlice {
         var length: u32 = 0;
         const ptr: ?[*]Range = @ptrCast(tree_sitter.ts_tree_included_ranges(@ptrCast(tree), &length));
         return .{ .ptr = ptr, .len = length };
@@ -321,13 +321,13 @@ pub const Tree = opaque {
         tree_sitter.ts_tree_edit(@ptrCast(tree), @ptrCast(input_edit));
     }
 
-    pub fn getChangedRanges(old_tree: *Self, new_tree: *const Tree) RangeSlice {
+    pub fn getChangedRanges(old_tree: *const Self, new_tree: *const Tree) RangeSlice {
         var length: u32 = 0;
         const ptr: ?[*]Range = @ptrCast(tree_sitter.ts_tree_get_changed_ranges(@ptrCast(old_tree), @ptrCast(new_tree), &length));
         return .{ .ptr = ptr, .len = length };
     }
 
-    pub fn printDotGraph(tree: *Self, fd: i32) void {
+    pub fn printDotGraph(tree: *const Self, fd: i32) void {
         tree_sitter.ts_tree_print_dot_graph(@ptrCast(tree), fd);
     }
 };
@@ -656,6 +656,12 @@ pub const Node = extern struct {
         return std.mem.span(tree_sitter.ts_node_type(@bitCast(self)));
     }
 
+    /// Like getType but returns the raw null-terminated string without scanning
+    /// for its length -- cheaper on hot paths that only compare or print it.
+    pub fn getTypeZ(self: Self) [*:0]const u8 {
+        return tree_sitter.ts_node_type(@bitCast(self));
+    }
+
     pub fn getSymbol(self: Self) Symbol {
         return tree_sitter.ts_node_symbol(@bitCast(self));
     }
@@ -668,6 +674,11 @@ pub const Node = extern struct {
 
     pub fn getGrammarType(self: Self) []const u8 {
         return std.mem.span(tree_sitter.ts_node_grammar_type(@bitCast(self)));
+    }
+
+    /// Like getGrammarType but returns the raw null-terminated string. See getTypeZ.
+    pub fn getGrammarTypeZ(self: Self) [*:0]const u8 {
+        return tree_sitter.ts_node_grammar_type(@bitCast(self));
     }
 
     pub fn getGrammarSymbol(self: Self) Symbol {
