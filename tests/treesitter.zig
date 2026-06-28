@@ -672,6 +672,81 @@ test "parseStringTimeout without a language surfaces ParseFail, not ParseTimeout
     try std.testing.expectError(error.ParseFail, p.parseStringTimeout(null, "x", std.time.ns_per_s));
 }
 
+test "matches applies a default match limit but respects an explicit one" {
+    const p = try Parser.init();
+    defer p.deinit();
+    const zig = try loadLanguage(.zig);
+    try p.setLanguage(zig);
+    const tree = try p.parseString(null, "const Foo = 0;");
+    defer tree.deinit();
+    const node = tree.rootNode();
+
+    var query = try Query.init(zig, "(variable_declaration) @decl");
+    defer query.deinit();
+
+    // A fresh cursor starts at the core default (UINT32_MAX); the convenience
+    // path replaces it with the conservative default.
+    var cursor = try QueryCursor.init();
+    defer cursor.deinit();
+    try std.testing.expectEqual(std.math.maxInt(u32), cursor.matchLimit());
+    var it = cursor.matches(query, node);
+    while (it.next()) |_| {}
+    try std.testing.expectEqual(QueryCursor.default_match_limit, cursor.matchLimit());
+
+    // An explicit limit set by the caller is left untouched.
+    var cursor2 = try QueryCursor.init();
+    defer cursor2.deinit();
+    cursor2.setMatchLimit(7);
+    var it2 = cursor2.matches(query, node);
+    while (it2.next()) |_| {}
+    try std.testing.expectEqual(@as(u32, 7), cursor2.matchLimit());
+}
+
+test "matchesChecked surfaces match-limit overflow" {
+    const p = try Parser.init();
+    defer p.deinit();
+    const zig = try loadLanguage(.zig);
+    try p.setLanguage(zig);
+    const tree = try p.parseString(null, "const Foo = 0;");
+    defer tree.deinit();
+    const node = tree.rootNode();
+
+    // Happy path: a normal query drains without error.
+    {
+        var query = try Query.init(zig, "(variable_declaration) @decl");
+        defer query.deinit();
+        var cursor = try QueryCursor.init();
+        defer cursor.deinit();
+        var it = cursor.matchesChecked(query, node);
+        var count: usize = 0;
+        while (try it.next()) |_| count += 1;
+        try std.testing.expect(count > 0);
+    }
+
+    // Overflow path: 8 wildcard patterns all match the root node at once,
+    // exceeding an explicit 1-state limit, so the cursor drops matches; the
+    // checked iterator reports it instead of silently truncating.
+    {
+        const src = "(_) @a\n(_) @b\n(_) @c\n(_) @d\n(_) @e\n(_) @f\n(_) @g\n(_) @h";
+        var query = try Query.init(zig, src);
+        defer query.deinit();
+        var cursor = try QueryCursor.init();
+        defer cursor.deinit();
+        cursor.setMatchLimit(1);
+        var it = cursor.matchesChecked(query, node);
+        var saw_overflow = false;
+        while (true) {
+            const maybe = it.next() catch {
+                saw_overflow = true;
+                break;
+            };
+            if (maybe == null) break;
+        }
+        try std.testing.expect(saw_overflow);
+        try std.testing.expect(cursor.didExceedMatchLimit());
+    }
+}
+
 test "editPoint" {
     // Insert 3 bytes at column 5
     const edit = zts.InputEdit{

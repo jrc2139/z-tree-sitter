@@ -445,6 +445,20 @@ pub const QueryCursor = opaque {
         tree_sitter.ts_query_cursor_set_max_start_depth(@ptrCast(self), max_start_depth);
     }
 
+    /// Conservative cap on the number of in-progress matches the cursor tracks,
+    /// applied by the convenience iterators (matches/matchesChecked) when the
+    /// caller has not chosen a limit. The core default is UINT32_MAX, which lets
+    /// a degenerate query grow capture-list memory without bound; capping trades
+    /// completeness for a memory ceiling. Overflow is observable via
+    /// matchesChecked or didExceedMatchLimit. Raw exec() is left untouched.
+    pub const default_match_limit: u32 = 65536;
+
+    fn applyDefaultMatchLimit(self: *Self) void {
+        if (self.matchLimit() == std.math.maxInt(u32)) {
+            self.setMatchLimit(default_match_limit);
+        }
+    }
+
     pub const MatchIterator = struct {
         cursor: *QueryCursor,
 
@@ -454,7 +468,34 @@ pub const QueryCursor = opaque {
         }
     };
 
+    /// Iterates matches and, once the stream is exhausted, surfaces truncation:
+    /// next() returns error.MatchLimitExceeded instead of null if the cursor
+    /// dropped matches because the match limit was reached.
+    pub const CheckedMatchIterator = struct {
+        cursor: *QueryCursor,
+
+        pub fn next(self: *CheckedMatchIterator) error{MatchLimitExceeded}!?QueryMatch {
+            var match: QueryMatch = undefined;
+            if (self.cursor.nextMatch(&match)) return match;
+            if (self.cursor.didExceedMatchLimit()) return error.MatchLimitExceeded;
+            return null;
+        }
+    };
+
+    /// Convenience: exec `query` over `node` and iterate its matches, applying
+    /// default_match_limit when the caller has not set a limit (a prior
+    /// setMatchLimit(maxInt) counts as unset). Truncation is silent here -- use
+    /// matchesChecked to observe match-limit overflow.
     pub fn matches(self: *Self, query: *const Query, node: Node) MatchIterator {
+        self.applyDefaultMatchLimit();
+        self.exec(query, node);
+        return .{ .cursor = self };
+    }
+
+    /// Like matches but the returned iterator reports match-limit overflow
+    /// (error.MatchLimitExceeded) instead of silently truncating results.
+    pub fn matchesChecked(self: *Self, query: *const Query, node: Node) CheckedMatchIterator {
+        self.applyDefaultMatchLimit();
         self.exec(query, node);
         return .{ .cursor = self };
     }
