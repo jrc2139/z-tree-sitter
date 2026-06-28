@@ -533,6 +533,96 @@ test "setAllocator" {
     try std.testing.expectEqualStrings("source_file", tree.rootNode().getType());
 }
 
+// Libc-backed allocator that counts net live allocations and free() calls.
+// Used to verify that buffers tree-sitter allocated (node strings, range
+// arrays) are released back through whatever allocator is currently installed
+// rather than always through libc free (see zts-gyq.1).
+const TrackingAlloc = struct {
+    var live: isize = 0;
+    var free_calls: usize = 0;
+
+    fn reset() void {
+        live = 0;
+        free_calls = 0;
+    }
+
+    fn malloc(size: usize) callconv(.c) ?*anyopaque {
+        const p = std.c.malloc(size);
+        if (p != null) live += 1;
+        return p;
+    }
+
+    fn calloc(count: usize, size: usize) callconv(.c) ?*anyopaque {
+        const p = std.c.calloc(count, size);
+        if (p != null) live += 1;
+        return p;
+    }
+
+    fn realloc(ptr: ?*anyopaque, size: usize) callconv(.c) ?*anyopaque {
+        const p = std.c.realloc(ptr, size);
+        // A non-null ptr is a resize (net zero live); only a null ptr is a new alloc.
+        if (ptr == null and p != null) live += 1;
+        return p;
+    }
+
+    fn free(ptr: ?*anyopaque) callconv(.c) void {
+        if (ptr != null) {
+            live -= 1;
+            free_calls += 1;
+        }
+        std.c.free(ptr);
+    }
+};
+
+test "RangeSlice/NodeString deinit free through the installed allocator" {
+    // Install a libc-backed tracking allocator as tree-sitter's allocator,
+    // then restore the default (libc) allocator for subsequent tests. The reset
+    // defer is registered first so it runs LAST -- after the parser and tree
+    // below are freed back through the tracking allocator.
+    TrackingAlloc.reset();
+    zts.setAllocator(
+        TrackingAlloc.malloc,
+        TrackingAlloc.calloc,
+        TrackingAlloc.realloc,
+        TrackingAlloc.free,
+    );
+    defer zts.setAllocator(null, null, null, null);
+
+    const p = try Parser.init();
+    defer p.deinit();
+
+    const zig = try loadLanguage(.zig);
+    try p.setLanguage(zig);
+
+    const tree = try p.parseString(null, "const x = 1;");
+    defer tree.deinit();
+    const root = tree.rootNode();
+
+    // NodeString: ts_node_string allocates via the tracking allocator, so deinit
+    // must release it through that same allocator (exactly one tracked free).
+    {
+        const live_before = TrackingAlloc.live;
+        const node_str = root.toString();
+        try std.testing.expect(node_str.ptr != null);
+        const frees_before = TrackingAlloc.free_calls;
+        node_str.deinit();
+        try std.testing.expectEqual(frees_before + 1, TrackingAlloc.free_calls);
+        try std.testing.expectEqual(live_before, TrackingAlloc.live);
+    }
+
+    // RangeSlice: ts_tree_included_ranges allocates via the tracking allocator,
+    // so deinit must release it through that same allocator (one tracked free).
+    {
+        const live_before = TrackingAlloc.live;
+        const ranges = tree.getIncludedRanges();
+        try std.testing.expect(ranges.ptr != null);
+        const frees_before = TrackingAlloc.free_calls;
+        ranges.deinit();
+        try std.testing.expectEqual(frees_before + 1, TrackingAlloc.free_calls);
+        try std.testing.expectEqual(live_before, TrackingAlloc.live);
+    }
+}
+
 test "editPoint" {
     // Insert 3 bytes at column 5
     const edit = zts.InputEdit{

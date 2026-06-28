@@ -51,3 +51,10 @@ pub const grammars = @cImport({
     if (config.yaml) @cInclude("yaml.h");
     if (config.zig) @cInclude("zig.h");
 });
+
+/// tree-sitter's active free function from its overridable allocator
+/// (alloc.h: `extern void (*ts_current_free)(void *ptr)`). Defaults to libc
+/// free and is updated by `ts_set_allocator`. Buffers that tree-sitter
+/// allocated (node strings, range arrays) must be released through this so
+/// frees match whatever allocator is currently installed.
+pub extern var ts_current_free: *const fn (?*anyopaque) callconv(.c) void;

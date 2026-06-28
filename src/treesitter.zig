@@ -1,5 +1,6 @@
 const std = @import("std");
-const tree_sitter = @import("c.zig").tree_sitter;
+const c = @import("c.zig");
+const tree_sitter = c.tree_sitter;
 
 pub const TREE_SITTER_LANGUAGE_VERSION: u32 = 15;
 
@@ -862,7 +863,7 @@ pub const RangeSlice = struct {
 
     pub fn deinit(self: RangeSlice) void {
         if (self.ptr) |p| {
-            std.c.free(@ptrCast(p));
+            c.ts_current_free(@ptrCast(p));
         }
     }
 };
@@ -879,7 +880,7 @@ pub const NodeString = struct {
 
     pub fn deinit(self: NodeString) void {
         if (self.ptr) |p| {
-            std.c.free(@ptrCast(p));
+            c.ts_current_free(@ptrCast(p));
         }
     }
 };
