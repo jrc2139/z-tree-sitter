@@ -1092,6 +1092,93 @@ pub fn setAllocator(
     );
 }
 
+/// Backs tree-sitter's C allocator hooks with a Zig std.mem.Allocator. Because
+/// tree-sitter's free/realloc carry no size, each block is prefixed with a
+/// header storing its length; the returned pointer is offset past the header and
+/// kept 16-byte aligned to match libc malloc's guarantee.
+const ZigAllocatorShim = struct {
+    var backing: ?std.mem.Allocator = null;
+
+    const alloc_align: std.mem.Alignment = .fromByteUnits(16);
+    /// Header bytes before the payload; a multiple of 16 so the payload stays
+    /// 16-aligned, with room to store the usize length at the base.
+    const header: usize = 16;
+
+    fn allocBlock(n: usize) ?[*]u8 {
+        const a = backing orelse return null;
+        const total = std.math.add(usize, header, n) catch return null;
+        const raw = a.rawAlloc(total, alloc_align, @returnAddress()) orelse return null;
+        @as(*usize, @ptrCast(@alignCast(raw))).* = n;
+        return raw + header;
+    }
+
+    fn freeBlock(payload: [*]u8) void {
+        const a = backing orelse return;
+        const base = payload - header;
+        const n = @as(*const usize, @ptrCast(@alignCast(base))).*;
+        a.rawFree(base[0 .. header + n], alloc_align, @returnAddress());
+    }
+
+    fn malloc(size: usize) callconv(.c) ?*anyopaque {
+        return allocBlock(size);
+    }
+
+    fn calloc(count: usize, size: usize) callconv(.c) ?*anyopaque {
+        const n = std.math.mul(usize, count, size) catch return null;
+        const p = allocBlock(n) orelse return null;
+        @memset(p[0..n], 0);
+        return p;
+    }
+
+    fn realloc(ptr: ?*anyopaque, size: usize) callconv(.c) ?*anyopaque {
+        const old: [*]u8 = @ptrCast(ptr orelse return allocBlock(size));
+        if (size == 0) {
+            freeBlock(old);
+            return null;
+        }
+        const old_n = @as(*const usize, @ptrCast(@alignCast(old - header))).*;
+        const new = allocBlock(size) orelse return null;
+        @memcpy(new[0..@min(old_n, size)], old[0..@min(old_n, size)]);
+        freeBlock(old);
+        return new;
+    }
+
+    fn free(ptr: ?*anyopaque) callconv(.c) void {
+        freeBlock(@ptrCast(ptr orelse return));
+    }
+};
+
+/// Install `allocator` as tree-sitter's PROCESS-GLOBAL allocator in place of the
+/// default libc malloc. Intended for high-throughput callers (e.g. servers); for
+/// one-shot CLI use the libc default is fine. Measured traffic is roughly one
+/// allocation per AST node, so a busy server churns heavily through the allocator.
+///
+/// Like `setAllocator`, this is process-global and effectively one-way:
+/// `allocator` must outlive every tree-sitter object created afterwards, and you
+/// must not switch allocators while tree-sitter objects are alive (their frees
+/// route through whichever hook is current at free time). Each block is
+/// size-prefixed so tree-sitter's size-less free can recover the length, so
+/// pass a real allocator (GeneralPurposeAllocator, c_allocator, ...), not a
+/// bump arena.
+pub fn installZigAllocator(allocator: std.mem.Allocator) void {
+    ZigAllocatorShim.backing = allocator;
+    setAllocator(
+        ZigAllocatorShim.malloc,
+        ZigAllocatorShim.calloc,
+        ZigAllocatorShim.realloc,
+        ZigAllocatorShim.free,
+    );
+}
+
+/// Restore the default libc allocator and drop the reference held by
+/// installZigAllocator. Every tree-sitter object allocated under the Zig
+/// allocator must already be freed before calling this, since their frees would
+/// otherwise route to libc and mismatch.
+pub fn uninstallZigAllocator() void {
+    setAllocator(null, null, null, null);
+    ZigAllocatorShim.backing = null;
+}
+
 pub const LanguageGrammar = @import("grammars.zig").LanguageGrammar;
 pub const loadLanguage = @import("grammars.zig").loadLanguage;
 pub const loadLanguageComptime = @import("grammars.zig").loadLanguageComptime;

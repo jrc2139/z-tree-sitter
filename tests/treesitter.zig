@@ -821,6 +821,34 @@ test "const-correct Tree reads and getTypeZ" {
     try std.testing.expectEqualStrings(root.getGrammarType(), std.mem.span(root.getGrammarTypeZ()));
 }
 
+test "installZigAllocator backs tree-sitter and frees cleanly" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // Defers run LIFO: uninstall restores libc + clears the shim first, then the
+    // GPA leak check runs -- so the GPA is torn down after the shim stops using
+    // it, and both happen even if an assertion below fails.
+    defer std.testing.expect(gpa.deinit() == .ok) catch @panic("tree-sitter leaked under Zig allocator");
+    defer zts.uninstallZigAllocator();
+
+    zts.installZigAllocator(gpa.allocator());
+
+    {
+        const p = try Parser.init();
+        defer p.deinit();
+        try p.setLanguage(try loadLanguage(.zig));
+
+        const tree = try p.parseString(null, "const x = 1; pub fn f() void { return; }");
+        defer tree.deinit();
+        try std.testing.expect(!tree.rootNode().hasError());
+
+        // toString routes its free through ts_current_free -> the shim too.
+        const s = tree.rootNode().toString();
+        defer s.deinit();
+        try std.testing.expect(s.slice().len > 0);
+    }
+    // All tree-sitter objects are freed at block exit; the deferred GPA check
+    // then confirms the size-prefixing shim leaked nothing.
+}
+
 test "editPoint" {
     // Insert 3 bytes at column 5
     const edit = zts.InputEdit{
