@@ -207,13 +207,22 @@ pub const Parser = opaque {
     /// set_cancellation_flag; the progress callback (return true to cancel) is
     /// the only remaining mechanism.
     const TimeoutState = struct {
-        timer: std.time.Timer,
+        start_ns: u64,
         budget_ns: u64,
         tripped: bool = false,
 
+        /// Monotonic nanoseconds via libc clock_gettime. Zig 0.16 moved
+        /// std.time.Timer behind the Io interface, which a callconv(.c) callback
+        /// cannot carry; this project links libc, so use clock_gettime directly.
+        fn nowNanos() u64 {
+            var ts: std.c.timespec = undefined;
+            _ = std.c.clock_gettime(std.c.CLOCK.MONOTONIC, &ts);
+            return @as(u64, @intCast(ts.sec)) *% std.time.ns_per_s + @as(u64, @intCast(ts.nsec));
+        }
+
         fn exceeded(state: *ParseState) callconv(.c) bool {
             const self: *TimeoutState = @ptrCast(@alignCast(state.payload.?));
-            if (self.timer.read() < self.budget_ns) return false;
+            if (nowNanos() -% self.start_ns < self.budget_ns) return false;
             self.tripped = true;
             return true;
         }
@@ -242,7 +251,7 @@ pub const Parser = opaque {
     /// worst-case parse cost, so bounding adversarial input is still useful.
     pub fn parseTimeout(self: *Self, old_tree: ?*const Tree, input: Input, budget_ns: u64) !*Tree {
         var state = TimeoutState{
-            .timer = std.time.Timer.start() catch return error.TimerUnsupported,
+            .start_ns = TimeoutState.nowNanos(),
             .budget_ns = budget_ns,
         };
         const options = ParseOptions{

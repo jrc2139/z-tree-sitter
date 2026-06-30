@@ -822,7 +822,7 @@ test "const-correct Tree reads and getTypeZ" {
 }
 
 test "installZigAllocator backs tree-sitter and frees cleanly" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}){};
     // Defers run LIFO: uninstall restores libc + clears the shim first, then the
     // GPA leak check runs -- so the GPA is torn down after the shim stops using
     // it, and both happen even if an assertion below fails.
