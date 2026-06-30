@@ -411,8 +411,8 @@ test "tree printDotGraph" {
     defer tree.deinit();
 
     // Open /dev/null for a valid writable fd
-    const devnull = std.posix.open("/dev/null", .{ .ACCMODE = .WRONLY }, 0) catch return;
-    defer std.posix.close(devnull);
+    const devnull = std.posix.openat(std.posix.AT.FDCWD, "/dev/null", .{ .ACCMODE = .WRONLY }, 0) catch return;
+    defer _ = std.c.close(devnull);
     tree.printDotGraph(@intCast(devnull));
 }
 
@@ -822,7 +822,7 @@ test "const-correct Tree reads and getTypeZ" {
 }
 
 test "installZigAllocator backs tree-sitter and frees cleanly" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}){};
     // Defers run LIFO: uninstall restores libc + clears the shim first, then the
     // GPA leak check runs -- so the GPA is torn down after the shim stops using
     // it, and both happen even if an assertion below fails.

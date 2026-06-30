@@ -1,6 +1,11 @@
 .zig-cache/
 zig-out/
+zig-pkg/
 .DS_Store
 files.zig
 grammars/
 *.orig/
+.claude/
+CLAUDE.md
+.sema/
+*.orig
