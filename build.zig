@@ -6,8 +6,8 @@ const Step = std.Build.Step;
 const eql = std.mem.eql;
 
 /// Minimum tree-sitter CLI version for grammar generation.
-/// Must match tree_sitter_api version in build.zig.zon.
-const tree_sitter_version = "0.26.9";
+/// Keep in sync with the vendored core under vendor/tree-sitter.
+const tree_sitter_version = "0.26.10";
 
 const Grammar = struct {
     name: []const u8,
@@ -151,7 +151,7 @@ pub fn build(b: *Build) !void {
 }
 
 /// Build the tree-sitter core runtime from vendored amalgamated source.
-/// Vendored from tree-sitter v0.26.9 (lib/include + lib/src only); upstream's
+/// Vendored from tree-sitter v0.26.10 (lib/include + lib/src only); upstream's
 /// build.zig is Zig-0.15-only. Flags and feature-test macros mirror that
 /// build.zig's amalgamated path.
 fn buildTreeSitterCore(
